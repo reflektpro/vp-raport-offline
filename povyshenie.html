@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ГУ ВП · Рапорт на повышение</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="v2">
+<header class="topbar">
+  <img src="emblem.png" alt="">
+  <div>
+    <div class="t1">ГЛАВНОЕ УПРАВЛЕНИЕ ВОЕННОЙ ПОЛИЦИИ</div>
+    <div class="t2">Рапорт на повышение</div>
+  </div>
+  <nav class="tabs"><a href="index.html">На взыскание</a><a href="povyshenie.html" class="on">На повышение</a><a href="otchet.html">Отчёт</a><a href="vygovor.html">Приказ</a><a href="ugolovnoe.html">Уголовные дела</a><a href="gajd.html">Гайд УД</a></nav>
+</header>
+
+<main class="layout v2">
+  <aside class="panel form-panel" id="form">
+    <h2>Рапорт на повышение</h2>
+    <div class="row2">
+      <label class="plab">Номер рапорта
+        <span class="numrow"><input id="num" autocomplete="off"><button type="button" class="mini" id="numNext" title="Следующий номер по счётчику этого браузера">след.</button></span>
+      </label>
+      <label class="plab">Дата подачи<input type="date" id="date"></label>
+    </div>
+    <h3>I. Общие сведения</h3>
+    <div class="q">1. Военнослужащий</div>
+    <div class="row2">
+      <label class="plab">Текущее звание<input class="req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
+      <label class="plab">Игровой статик<input class="req" id="fromStatic" placeholder="12345"></label>
+    </div>
+    <label class="plab">Имя Фамилия<input class="req" id="fromName" placeholder="Виктор Лаптев" autocomplete="off"></label>
+    <div class="q">2. Подразделение и должность</div>
+    <div class="row2">
+      <label class="plab">Подразделение<input class="req" id="fromUnit" list="units" placeholder="Батальон военной полиции"></label>
+      <label class="plab">Должность<input class="req" id="fromPos" list="positions" placeholder="Инспектор ВП"></label>
+    </div>
+    <div class="q">3. Звание и период службы в текущем звании</div>
+    <label class="plab">Испрашиваемое звание<input class="req" id="target" list="ranks" placeholder="подставится по системе повышений"></label>
+    <div class="week-dates"><input type="date" id="fromDate" class="req" title="в текущем звании с"><span>—</span><input type="date" id="toDate" class="req" title="по"></div>
+
+    <h3>Калькулятор повышения</h3>
+    <div class="route" id="route"></div>
+    <div class="bar"><div class="bar-fill" id="barFill"></div><span id="barText">0 баллов</span></div>
+    <ul class="crit" id="crit"></ul>
+    <div class="crit-note" id="critNote"></div>
+
+    <h3>II. Результаты служебной деятельности</h3>
+    <label class="chk"><input type="checkbox" id="showPts" checked> Указывать баллы в документе</label>
+    <div class="acts-hint">Отмечай выполненное за период службы в текущем звании и прикладывай ссылки, по одной на строку. Деление на основные и дополнительные критерии предварительное.</div>
+    <div id="acts"></div>
+
+    <h3>III. Итоговая информация</h3>
+    <label class="plab q">6. Выполнение критериев повышения<textarea id="result" rows="2"></textarea></label>
+    <div class="norm-hint">Пусто — подставится автоматически по калькулятору.</div>
+    <label class="plab q">7. Дополнительные сведения<textarea id="extra" rows="2" placeholder="другие заслуги, поощрения; пусто — «отсутствуют»"></textarea></label>
+    <h3>Выгрузка</h3>
+    <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
+    <button class="btn primary" id="pdf">Скачать PDF</button>
+    <button class="btn" id="png">Скачать PNG</button>
+    <button class="btn ghost" id="clear">Обнулить достижения</button>
+    <div class="status" id="status"></div>
+    <div class="note">PDF — векторный текст, ссылки на доказательства видны и кликабельны. PNG — тот же документ без ссылок: вместо адресов «Приложение №N». Данные хранятся только в этом браузере и никуда не отправляются.</div>
+  </aside>
+  <section class="preview-wrap">
+    <div class="pv-bar"><span>Предпросмотр</span><span id="pvPages"></span>
+      <span class="pv-mode"><label><input type="radio" name="pvMode" value="preview" checked> PDF</label><label><input type="radio" name="pvMode" value="png"> PNG</label></span></div>
+    <div class="preview" id="preview"></div>
+  </section>
+</main>
+
+<datalist id="ranks">
+  <option>Рядовой</option><option>Ефрейтор</option><option>Младший сержант</option><option>Сержант</option>
+  <option>Старший сержант</option><option>Старшина</option><option>Прапорщик</option><option>Старший прапорщик</option>
+  <option>Младший лейтенант</option><option>Лейтенант</option><option>Старший лейтенант</option><option>Капитан</option>
+  <option>Майор</option><option>Подполковник</option><option>Полковник</option><option>Генерал-майор</option><option>Генерал-лейтенант</option><option>Генерал-полковник</option><option>Генерал армии</option>
+</datalist>
+<datalist id="positions">
+  <option>Стажёр ВП</option><option>Инспектор ВП</option><option>Дознаватель ВП</option><option>Инструктор ВП</option><option>Зам. Ком. Бат ВП</option><option>Ком. Бат ВП</option><option>Инспектор военной комендатуры</option><option>Дознаватель военной комендатуры</option><option>Заместитель коменданта гарнизона</option><option>Комендант гарнизона</option>
+</datalist>
+<datalist id="units"><option>Батальон военной полиции</option><option>Военная комендатура</option></datalist>
+
+<script src="config.js"></script>
+<script src="vendor/fonts-data.js"></script>
+<script src="assets-data.js"></script>
+<script src="vendor/pdfmake.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf.worker.min.js"></script>
+<script src="docs.js"></script>
+<script src="promo-rules.js"></script>
+<script src="criteria.js"></script>
+<script src="povyshenie.js"></script>
+</body>
+</html>

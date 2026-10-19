@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ГУ ВП · Приказ о взыскании</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <img src="emblem.png" alt="">
+  <div>
+    <div class="t1">ГЛАВНОЕ УПРАВЛЕНИЕ ВОЕННОЙ ПОЛИЦИИ</div>
+    <div class="t2">Приказ о дисциплинарном взыскании</div>
+  </div>
+  <nav class="tabs"><a href="index.html">На взыскание</a><a href="povyshenie.html">На повышение</a><a href="otchet.html">Отчёт</a><a href="vygovor.html" class="on">Приказ</a><a href="ugolovnoe.html">Уголовные дела</a><a href="gajd.html">Гайд УД</a></nav>
+</header>
+
+<main class="layout">
+  <section class="desk">
+    <div class="paper" id="paper">
+      <div class="emblem"><img src="emblem.png" alt=""></div>
+      <div class="hdr">Министерство обороны Российской Федерации<br>Московский военный округ Вооружённых сил<br>Российской Федерации</div>
+
+      <h1 class="title">П Р И К А З</h1>
+      <div class="subtitle">О вынесении дисциплинарного взыскания</div>
+      <div class="meta">
+        <input class="f" id="date" data-fit>
+        <span id="city"></span>
+        <span>№<input class="f" id="num" data-fit placeholder="по порядку"></span>
+      </div>
+      <div class="rule"></div>
+
+      <p class="para">В связи с совершением дисциплинарного проступка, предусмотренного <span class="calc" id="normPoints">статьёй ___</span> Дисциплинарного устава, <b>ПРИКАЗЫВАЮ:</b></p>
+
+      <ol class="items">
+        <li>Выдать дисциплинарное взыскание в виде <span id="kindWord">выговора</span> <span class="calc" id="rankShow">________</span> <span class="calc" id="nameShow">________</span> с номером паспорта <span class="calc" id="passShow">______</span>.</li>
+        <li>Назначить военнослужащему отработку дисциплинарного взыскания в виде:
+          <ol class="subitems" id="workList"></ol>
+        </li>
+        <li>Настоящий Приказ вступает в законную силу с момента его официального опубликования и утверждения командующим составом батальона военной полиции Воинской части №12132.</li>
+      </ol>
+
+      <div class="sign">
+        <div class="sign-left">
+          <textarea class="f req pos" id="fromPos" rows="2" placeholder="должность"></textarea>
+          <input class="f req" id="fromRank" data-fit placeholder="звание" list="ranks">
+        </div>
+        <div class="sign-mid">
+          <img id="stamp" alt="">
+          <div class="autograph" id="autograph"><span id="autoText"></span><svg id="autoFlourish" viewBox="0 0 240 100"><path id="autoPath" d=""/></svg></div>
+        </div>
+        <div class="sign-right">
+          <input class="f req" id="fromName" data-fit placeholder="Имя Фамилия">
+          <div class="sign-hint">подпись появится сама</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h2>Приказ</h2>
+    <div class="kind" id="kind">
+      <button type="button" data-kind="pred">Предупреждение</button>
+      <button type="button" data-kind="vyg" class="on">Выговор</button>
+    </div>
+    <label class="plab">Статья 6 главы
+      <input id="nPoint" placeholder="6.1 или 6.1, 6.25">
+    </label>
+    <div class="norm-hint">Например 6.1. Несколько статей пиши через запятую.</div>
+    <label class="plab">Подразделение
+      <select id="unit"></select>
+    </label>
+    <label class="plab">Звание
+      <input id="tRank" list="ranks" placeholder="Сержант">
+    </label>
+    <label class="plab">Имя и фамилия
+      <input id="tName" placeholder="Имя Фамилия" autocomplete="off">
+    </label>
+    <label class="plab">Паспорт
+      <input id="tPass" placeholder="000-000" autocomplete="off">
+    </label>
+    <div class="hist" id="hist"></div>
+    <h3 class="duty-h">Отработка</h3>
+    <div class="duty-edit" id="dutyEdit"></div>
+    <div class="row-btns"><button type="button" class="mini" id="dutyAdd">+ пункт</button><button type="button" class="mini" id="dutyReset">По уставу</button></div>
+    <div class="norm-hint" id="dutyHint">Пункты подставлены по уставу. Любой можно переписать своими словами, удалить или добавить новый — подсказки из устава появятся при вводе.</div>
+    <datalist id="dutyOpts"></datalist>
+    <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
+    <button class="btn primary" id="pdf">Скачать PDF</button>
+    <button class="btn" id="png">Скачать PNG</button>
+    <button class="btn ghost" id="clear">Очистить нарушителя</button>
+    <div class="status" id="status"></div>
+    <div class="note">По умолчанию отработка подставляется по уставу (все пункты для подразделения), но руководитель может переписать её своими словами. У рядового военной академии свои поставки: 5 на предупреждение и 9 на выговор. Номер приказа предлагается по счётчику этого браузера и правится вручную. По паспорту видно, выгружались ли уже в этом браузере предупреждение или выговор.</div>
+  </aside>
+</main>
+
+<datalist id="ranks">
+  <option>Рядовой</option><option>Ефрейтор</option><option>Младший сержант</option><option>Сержант</option>
+  <option>Старший сержант</option><option>Старшина</option><option>Прапорщик</option><option>Старший прапорщик</option>
+  <option>Младший лейтенант</option><option>Лейтенант</option><option>Старший лейтенант</option><option>Капитан</option>
+  <option>Майор</option><option>Подполковник</option><option>Полковник</option><option>Генерал-майор</option><option>Генерал-лейтенант</option><option>Генерал-полковник</option><option>Генерал армии</option>
+</datalist>
+<datalist id="positions">
+  <option>Стажёр ВП</option><option>Инспектор ВП</option><option>Дознаватель ВП</option><option>Инструктор ВП</option><option>Зам. Ком. Бат ВП</option><option>Ком. Бат ВП</option><option>Инспектор военной комендатуры</option><option>Дознаватель военной комендатуры</option><option>Заместитель коменданта гарнизона</option><option>Комендант гарнизона</option>
+  <option>Командир 1-ой мотострелковой бригады</option>
+  <option>Первый Заместитель Командира Бригады</option>
+  <option>Начальник штаба войсковой части №12132</option>
+  <option>Заместитель командира бригады по Материально-техническому обеспечению</option>
+  <option>Помощник командира бригады войсковой части №12132</option>
+</datalist>
+
+<script src="config.js"></script>
+<script src="vendor/fonts-data.js"></script>
+<script src="assets-data.js"></script>
+<script src="vendor/pdfmake.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf.worker.min.js"></script>
+<script src="docs.js"></script>
+<script src="vygovor-rules.js"></script>
+<script src="vygovor.js"></script>
+</body>
+</html>

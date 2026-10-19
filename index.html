@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ГУ ВП · Рапорт на взыскание</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="v2">
+<header class="topbar">
+  <img src="emblem.png" alt="">
+  <div>
+    <div class="t1">ГЛАВНОЕ УПРАВЛЕНИЕ ВОЕННОЙ ПОЛИЦИИ</div>
+    <div class="t2">Рапорт на взыскание</div>
+  </div>
+  <nav class="tabs"><a href="index.html" class="on">На взыскание</a><a href="povyshenie.html">На повышение</a><a href="otchet.html">Отчёт</a><a href="vygovor.html">Приказ</a><a href="ugolovnoe.html">Уголовные дела</a><a href="gajd.html">Гайд УД</a></nav>
+</header>
+
+<main class="layout v2">
+  <aside class="panel form-panel" id="form">
+    <h2>Рапорт на взыскание</h2>
+    <div class="row2">
+      <label class="plab">Номер рапорта
+        <span class="numrow"><input id="num" autocomplete="off"><button type="button" class="mini" id="numNext" title="Следующий номер по счётчику этого браузера">след.</button></span>
+      </label>
+      <label class="plab">Дата рапорта<input type="date" id="date"></label>
+    </div>
+
+    <h3>От кого (составитель)</h3>
+    <div class="row2">
+      <label class="plab">Звание<input class="req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
+      <label class="plab">Статик<input id="fromStatic" placeholder="12345"></label>
+    </div>
+    <label class="plab">Имя Фамилия<input class="req" id="fromName" placeholder="Виктор Лаптев" autocomplete="off"></label>
+    <label class="plab">Должность<input class="req" id="fromPos" list="positions" placeholder="Инспектор ВП"></label>
+
+    <h3>I. Сведения о правонарушении</h3>
+    <div class="q">1. Сотрудник, выявивший нарушение</div>
+    <label class="chk"><input type="checkbox" id="detSelf" checked> выявил я (данные составителя)</label>
+    <div id="detBox" class="row3">
+      <label class="plab">Звание<input id="detRank" list="ranks"></label>
+      <label class="plab">Имя Фамилия<input id="detName"></label>
+      <label class="plab">Статик<input id="detStatic"></label>
+    </div>
+    <div class="q">2. Военнослужащий, допустивший нарушение</div>
+    <div class="row2">
+      <label class="plab">Звание<input class="req" id="tRank" list="ranks" placeholder="Рядовой"></label>
+      <label class="plab">Статик<input class="req" id="tStatic" placeholder="54321"></label>
+    </div>
+    <label class="plab">Имя Фамилия<input class="req" id="tName" placeholder="Иван Петров" autocomplete="off"></label>
+    <label class="plab">Подразделение<input class="req" id="tUnit" list="units" placeholder="Рота охраны и обеспечения"></label>
+    <div class="q">3. Дата, время и место правонарушения</div>
+    <div class="row3">
+      <label class="plab">Дата<input type="date" class="req" id="vDate"></label>
+      <label class="plab">Время<input type="time" class="req" id="vTime"></label>
+      <label class="plab">Место<input class="req" id="vPlace" placeholder="КПП-1"></label>
+    </div>
+    <div class="q">4. Дата и время обнаружения</div>
+    <div class="row3">
+      <label class="plab">Дата<input type="date" class="req" id="dDate"></label>
+      <label class="plab">Время<input type="time" class="req" id="dTime"></label>
+      <span class="plab"><button type="button" class="mini" id="dSame">= времени нарушения</button></span>
+    </div>
+    <div class="q">5. Нарушенная норма и её содержание</div>
+    <div id="normList"></div>
+    <button type="button" class="btn ghost small" id="normAdd">+ ещё норма</button>
+    <div class="norm-hint">Пункт Внутреннего устава, его полная расшифровка и соответствующий пункт Дисциплинарного устава. Введённые нормы запоминаются: при повторном вводе пункта расшифровка подставится сама.</div>
+    <label class="plab q">6. Обстоятельства правонарушения<textarea class="req" id="circ" rows="4" placeholder="что произошло, действия нарушителя, реакция на замечания"></textarea></label>
+
+    <h3>II. Материалы и обстоятельства</h3>
+    <div class="q">7. Доказательства</div>
+    <div id="evList"></div>
+    <button type="button" class="btn ghost small" id="evAdd">+ доказательство</button>
+    <label class="plab q">8. Смягчающие обстоятельства<textarea id="mitig" rows="1" placeholder="не выявлены"></textarea></label>
+    <label class="plab q">9. Отягчающие обстоятельства<textarea id="aggr" rows="1" placeholder="не выявлены"></textarea></label>
+    <label class="plab q">10. Предлагаемая мера взыскания<input class="req" id="measure" list="measures" placeholder="Выговор"></label>
+
+    <h3>Выгрузка</h3>
+    <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать и подпись</label>
+    <button class="btn primary" id="pdf">Скачать PDF</button>
+    <button class="btn" id="png">Скачать PNG</button>
+    <button class="btn ghost" id="clear">Очистить нарушение</button>
+    <div class="status" id="status"></div>
+    <div class="note">PDF — с векторным текстом и кликабельными ссылками на доказательства. PNG — тот же документ без ссылок: доказательства идут как «Приложение №N». Всё работает в браузере, данные никуда не отправляются; номер ведётся счётчиком этого браузера и правится вручную.</div>
+  </aside>
+
+  <section class="preview-wrap">
+    <div class="pv-bar"><span>Предпросмотр</span><span id="pvPages"></span>
+      <span class="pv-mode"><label><input type="radio" name="pvMode" value="preview" checked> PDF</label><label><input type="radio" name="pvMode" value="png"> PNG</label></span></div>
+    <div class="preview" id="preview"></div>
+  </section>
+</main>
+
+<datalist id="ranks">
+  <option>Рядовой</option><option>Ефрейтор</option><option>Младший сержант</option><option>Сержант</option>
+  <option>Старший сержант</option><option>Старшина</option><option>Прапорщик</option><option>Старший прапорщик</option>
+  <option>Младший лейтенант</option><option>Лейтенант</option><option>Старший лейтенант</option><option>Капитан</option>
+  <option>Майор</option><option>Подполковник</option><option>Полковник</option><option>Генерал-майор</option><option>Генерал-лейтенант</option><option>Генерал-полковник</option><option>Генерал армии</option>
+</datalist>
+<datalist id="evTypes">
+  <option>Видеозапись с нагрудной камеры (боди-камера)</option><option>Скриншот</option><option>Видеозапись</option><option>Аудиозапись</option><option>Рапорт свидетеля</option><option>Объяснительная</option><option>Выписка из журнала</option>
+</datalist>
+<datalist id="positions">
+  <option>Стажёр ВП</option><option>Инспектор ВП</option><option>Дознаватель ВП</option><option>Инструктор ВП</option><option>Зам. Ком. Бат ВП</option><option>Ком. Бат ВП</option><option>Инспектор военной комендатуры</option><option>Дознаватель военной комендатуры</option><option>Заместитель коменданта гарнизона</option><option>Комендант гарнизона</option>
+</datalist>
+<datalist id="units"></datalist>
+<datalist id="measures">
+  <option>Устное замечание</option><option>Предупреждение</option><option>Выговор</option><option>Строгий выговор</option><option>Наряд вне очереди</option><option>Арест с содержанием на гауптвахте</option><option>Понижение в воинском звании</option><option>Понижение в должности</option><option>Увольнение со службы</option>
+</datalist>
+<datalist id="normPts"></datalist>
+
+<script src="config.js"></script>
+<script src="vendor/fonts-data.js"></script>
+<script src="assets-data.js"></script>
+<script src="vendor/pdfmake.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf.worker.min.js"></script>
+<script src="docs.js"></script>
+<script src="vygovor-rules.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
