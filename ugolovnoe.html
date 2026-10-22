@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body class="promo ud">
+<body class="v2 ud">
 <header class="topbar">
   <img src="emblem.png" alt="">
   <div>
@@ -19,32 +19,8 @@
   <nav class="tabs"><a href="index.html">На взыскание</a><a href="povyshenie.html">На повышение</a><a href="otchet.html">Отчёт</a><a href="vygovor.html">Приказ</a><a href="ugolovnoe.html" class="on">Уголовные дела</a><a href="gajd.html">Гайд УД</a></nav>
 </header>
 
-<main class="layout">
-  <section class="desk">
-    <div class="paper" id="paper">
-      <div class="ud-approve" id="pApprove">УТВЕРЖДАЮ<br>Прокурор ______________________<br>«___» ____________ 20__ г.<br>подпись ____________</div>
-      <div class="emblem"><img src="emblem.png" alt=""></div>
-      <div class="hdr" id="hdr"></div>
-      <div class="addressee" id="pTo"></div>
-      <h1 class="title" id="pTitle"></h1>
-      <div class="subtitle" id="pSub"></div>
-      <div class="meta"><span id="pDate"></span><span id="pCity"></span><span id="pNum"></span></div>
-      <div class="rule"></div>
-      <div id="pBody"></div>
-      <div class="appendix" id="pApp"><b>Приложение:</b><div id="pAppList"></div></div>
-      <div class="sign">
-        <div class="sign-left"><span id="sPos"></span><span id="sRank"></span></div>
-        <div class="sign-mid">
-          <img id="stamp" alt="">
-          <div class="autograph"><span id="autoText"></span><svg id="autoFlourish" viewBox="0 0 240 100"><path id="autoPath" d=""/></svg></div>
-        </div>
-        <div class="sign-right"><span id="sName"></span><div class="static-line">статик № <span id="sStatic"></span></div></div>
-      </div>
-      <div class="ud-signs" id="pSigns"></div>
-    </div>
-  </section>
-
-  <aside class="panel calc-panel">
+<main class="layout v2">
+  <aside class="panel form-panel" id="form">
     <h2>Уголовное дело</h2>
     <div class="ud-case-row"><select id="caseSel"></select><button type="button" class="mini" id="caseNew" title="Новое дело">+ дело</button><button type="button" class="mini" id="caseDel" title="Удалить дело">×</button></div>
     <label class="plab">Номер дела (вписывается вручную)<input id="c_num" placeholder="например, 12/2026"></label>
@@ -59,10 +35,12 @@
     <label class="plab">И. Фамилия адресата (кому)<input id="c_chiefName" placeholder="Н. Прайду"></label>
 
     <h3>Дознаватель</h3>
-    <label class="plab">Должность<input class="f req" id="fromPos" list="positions" placeholder="Дознаватель ВП"></label>
-    <label class="plab">Звание<input class="f req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
-    <label class="plab">Имя Фамилия<input class="f req" id="fromName" placeholder="Имя Фамилия"></label>
-    <label class="plab">Статик<input class="f req" id="staticId" placeholder="0000"></label>
+    <label class="plab">Должность<input class="req" id="fromPos" list="positions" placeholder="Дознаватель ВП"></label>
+    <div class="row2">
+      <label class="plab">Звание<input class="req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
+      <label class="plab">Статик<input class="req" id="staticId" placeholder="0000"></label>
+    </div>
+    <label class="plab">Имя Фамилия<input class="req" id="fromName" placeholder="Шерман Ассман"></label>
 
     <h3>Документ</h3>
     <select id="docSel" class="ud-doc"></select>
@@ -77,13 +55,19 @@
     <button type="button" class="btn ghost" id="evAdd">+ материал</button>
 
     <div class="crit-note no" id="checksBox"><b>Не хватает по УПК:</b><ul id="checks"></ul></div>
-    <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
+    <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать и подпись</label>
     <button class="btn primary" id="pdf">Скачать PDF</button>
     <button class="btn" id="png">Скачать PNG</button>
     <button class="btn ghost" id="clearDoc">Очистить бланк</button>
     <div class="status" id="status"></div>
     <div class="note">Как вести дело по шагам, читай в <a href="gajd.html">гайде</a>. Дела хранятся только в этом браузере.</div>
   </aside>
+
+  <section class="preview-wrap">
+    <div class="pv-bar"><span>Предпросмотр</span><span id="pvPages"></span>
+      <span class="pv-mode"><label><input type="radio" name="pvMode" value="preview" checked> PDF</label><label><input type="radio" name="pvMode" value="png"> PNG</label></span></div>
+    <div class="preview" id="preview"></div>
+  </section>
 </main>
 
 <datalist id="ranks">

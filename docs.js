@@ -113,67 +113,116 @@
   }
   const rmode = m => m === "png" ? "png" : "pdf";
 
-  // ---------------- HTML бланков УД/приказа → pdfmake ----------------
+  // ---------------- HTML бланков (УД) → блоки документа в общем стиле ----------------
+  // Тексты бланков (ud-docs.js) остаются как есть; меняется только вёрстка:
+  //   p.para → абзац; p.ud-h (УСТАНОВИЛ:, ПОСТАНОВИЛ:) → формула как «ПРОШУ:» в рапортах;
+  //   ol.items → нумерованные пункты в стиле рапорта; в протоколах — разделы I, II, III и пункты с жирными подписями.
   const URL_IN_TEXT = /((?:https?:\/\/|www\.)[^\s<>«»"]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:ru|com|net|org|be|tv|io|me|gg|su|рф)\/[^\s<>«»"]*)/gi;
-  function linkify(text, mode, alt) {
-    const out = []; let last = 0; text.replace(URL_IN_TEXT, (m, _1, off) => {
+  const URL_ALT = "приобщена к материалам дела";
+  function linkify(text, alt) {
+    const out = []; let last = 0;
+    text.replace(URL_IN_TEXT, (m, _1, off) => {
       if (off > last) out.push(text.slice(last, off));
       const tail = /[.,;:)]+$/.exec(m); const url = tail ? m.slice(0, -tail[0].length) : m;
-      out.push({ url, alt: alt || "приобщена к материалам дела" });
+      out.push({ url, alt: alt || URL_ALT });
       if (tail) out.push(tail[0]);
       last = off + m.length; return m;
     });
     if (last < text.length) out.push(text.slice(last));
     return out;
   }
-  function htmlInline(node, mode, st) {
+  // узел → куски текста формата runs(): строки, {t,b,i}, {ph}, {url,alt}, "\n"
+  function htmlInline(node, st) {
     let out = [];
     node.childNodes.forEach(ch => {
       if (ch.nodeType === 3) {
         const t = ch.nodeValue.replace(/\s+/g, " ");
         if (!t) return;
-        linkify(t, mode).forEach(x => {
-          if (typeof x === "string") out.push(Object.assign({ text: x }, st.b ? { bold: true } : {}, st.i ? { italics: true } : {}));
-          else out = out.concat(runs([x], rmode(mode)));
-        });
+        if (st.ph) { out.push({ ph: t }); return; }
+        linkify(t).forEach(x => out.push(typeof x === "string" ? ((st.b || st.i) ? { t: x, b: st.b, i: st.i } : x) : x));
       } else if (ch.nodeType === 1) {
         const tag = ch.tagName.toLowerCase();
-        if (tag === "br") { out.push({ text: "\n" }); return; }
+        if (tag === "br") { out.push("\n"); return; }
         if (tag === "ol" || tag === "ul") return; // блочные — отдельно
         const s2 = Object.assign({}, st);
         if (tag === "b" || tag === "strong") s2.b = true;
         if (tag === "i" || tag === "em") s2.i = true;
-        out = out.concat(htmlInline(ch, mode, s2));
+        if (ch.classList.contains("ph")) s2.ph = true;
+        out = out.concat(htmlInline(ch, s2));
       }
     });
+    // обрезаем пробелы по краям
+    const txt = x => typeof x === "string" ? x : (x.t != null ? x.t : x.ph != null ? x.ph : null);
+    const setTxt = (i, v) => { const x = out[i]; if (typeof x === "string") out[i] = v; else if (x.t != null) out[i] = Object.assign({}, x, { t: v }); else out[i] = Object.assign({}, x, { ph: v }); };
+    while (out.length && txt(out[0]) != null && !txt(out[0]).trim()) out.shift();
+    while (out.length && txt(out[out.length - 1]) != null && !txt(out[out.length - 1]).trim()) out.pop();
+    if (out.length && txt(out[0]) != null) setTxt(0, txt(out[0]).replace(/^\s+/, ""));
+    if (out.length && txt(out[out.length - 1]) != null) setTxt(out.length - 1, txt(out[out.length - 1]).replace(/\s+$/, ""));
     return out;
   }
-  function trimRuns(rs) {
-    while (rs.length && typeof rs[0].text === "string" && !rs[0].text.trim() && !rs[0].link) rs.shift();
-    if (rs.length && typeof rs[0].text === "string") rs[0] = Object.assign({}, rs[0], { text: rs[0].text.replace(/^\s+/, "") });
-    return rs;
+  const runText = r => r.map(x => typeof x === "string" ? x : x.t != null ? x.t : x.ph != null ? x.ph : "\u0001").join("");
+  // «Подпись: значение» → [подпись, значение]. Подпись — до первого «: », не длиннее 100 знаков, без конца предложения.
+  function splitLabel(r) {
+    const s = runText(r), m = /:(\s|$)/.exec(s);
+    if (!m || m.index < 3 || m.index > 100 || /[.!?]\s/.test(s.slice(0, m.index)) || s.slice(0, m.index).includes("\u0001")) return null;
+    let pos = 0; const label = [], value = [];
+    for (const x of r) {
+      const t = typeof x === "string" ? x : x.t != null ? x.t : x.ph != null ? x.ph : null;
+      if (t == null) { (pos > m.index ? value : label).push(x); continue; }
+      const a = pos, b = pos + t.length; pos = b;
+      if (b <= m.index) label.push(t);
+      else if (a > m.index) value.push(x);
+      else { label.push(t.slice(0, m.index - a)); const rest = t.slice(m.index - a + 1).replace(/^\s+/, ""); if (rest) value.push(typeof x === "string" ? rest : x.t != null ? Object.assign({}, x, { t: rest }) : Object.assign({}, x, { ph: rest })); }
+    }
+    return { label: label.join("").trim(), value };
   }
-  function htmlList(ol, mode, depth) {
-    const items = [...ol.children].filter(li => li.tagName.toLowerCase() === "li");
-    return items.map((li, i) => {
-      const stack = [{ text: trimRuns(htmlInline(li, mode, {})), alignment: "justify" }];
-      li.querySelectorAll(":scope > ol, :scope > ul").forEach(sub => stack.push({ stack: htmlList(sub, mode, depth + 1), margin: [0, 2, 0, 0] }));
-      return { columns: [{ width: 22, text: depth ? `${i + 1})` : `${i + 1}.` }, { width: "*", stack }], columnGap: 2, margin: [depth ? 0 : 8, 0, 0, 4] };
-    });
+  // фрагмент HTML (строки через <br>) → массив строк runs()
+  function htmlLines(html) {
+    return String(html || "").split(/<br\s*\/?>/i).map(x => htmlInline(new DOMParser().parseFromString(`<div>${x}</div>`, "text/html").body.firstChild, {})).filter(r => r.length);
   }
-  function htmlBlocks(html, mode) {
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+  const liRuns = li => htmlInline(li, {});
+  const liSub = li => { const sub = li.querySelector(":scope > ol, :scope > ul"); return sub ? [...sub.children].filter(x => x.tagName.toLowerCase() === "li").map(liRuns) : null; };
+  // opt.protocol: разделы «I. СВЕДЕНИЯ О СЛЕДСТВЕННОМ ДЕЙСТВИИ», «II. <формула>», «III. ЗАЯВЛЕНИЯ, ЗАМЕЧАНИЯ И ПОДПИСИ»
+  function htmlBlocks(html, opt) {
+    opt = opt || {};
     const root = new DOMParser().parseFromString(`<div>${html || ""}</div>`, "text/html").body.firstChild;
-    const out = [];
+    const toks = [];
     root.childNodes.forEach(n => {
-      if (n.nodeType === 3) { if (n.nodeValue.trim()) out.push({ text: linkify(n.nodeValue.trim(), mode).map(x => typeof x === "string" ? { text: x } : runs([x], rmode(mode))[0]).filter(Boolean), margin: [0, 0, 0, 6] }); return; }
+      if (n.nodeType === 3) { if (n.nodeValue.trim()) toks.push({ k: "p", r: htmlInline({ childNodes: [n] }, {}) }); return; }
       if (n.nodeType !== 1) return;
       const tag = n.tagName.toLowerCase();
-      if (tag === "ol" || tag === "ul") { out.push({ stack: htmlList(n, mode, 0), margin: [0, 2, 0, 6] }); return; }
-      if (n.classList.contains("ud-h")) { out.push({ text: trimRuns(htmlInline(n, mode, {})), bold: true, alignment: "center", characterSpacing: 0.6, margin: [0, 8, 0, 5] }); return; }
-      const indent = n.classList.contains("para") && !n.classList.contains("nl");
-      out.push({ text: trimRuns(htmlInline(n, mode, {})), alignment: "justify", leadingIndent: indent ? 35 : 0, margin: [0, 0, 0, 6] });
-      n.querySelectorAll(":scope > ol, :scope > ul").forEach(sub => out.push({ stack: htmlList(sub, mode, 0), margin: [0, 0, 0, 6] }));
+      if (tag === "ol" || tag === "ul") toks.push({ k: "ol", lis: [...n.children].filter(x => x.tagName.toLowerCase() === "li") });
+      else if (n.classList.contains("ud-h")) toks.push({ k: "h", text: n.textContent.trim() });
+      else toks.push({ k: "p", r: htmlInline(n, {}), nl: n.classList.contains("nl") });
     });
+    const out = [];
+    let sec = 0, no = 0, phase = opt.protocol ? "facts" : "free";
+    const section = t => { out.push({ section: `${ROMAN[sec++] || sec}. ${t}` }); no = 0; };
+    if (opt.protocol) section(opt.firstSection || "СВЕДЕНИЯ О СЛЕДСТВЕННОМ ДЕЙСТВИИ");
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i], next = toks[i + 1];
+      if (t.k === "h") {
+        if (opt.protocol) { section(t.text.replace(/:\s*$/, "")); phase = "body"; }
+        else out.push({ formula: t.text });
+        continue;
+      }
+      if (t.k === "ol") {
+        t.lis.forEach(li => { const sub = liSub(li); out.push(Object.assign({ item: ++no, value: liRuns(li), dot: false }, sub ? { list: sub } : {})); });
+        continue;
+      }
+      // абзац
+      if (opt.protocol && /^(Протокол прочитан|Заявлений и замечаний)/.test(runText(t.r))) { if (phase !== "close") { section("ЗАЯВЛЕНИЯ, ЗАМЕЧАНИЯ И ПОДПИСИ"); phase = "close"; } out.push({ p: t.r }); continue; }
+      if (phase === "facts") {
+        const sp = splitLabel(t.r);
+        const list = next && next.k === "ol" ? next.lis.map(liRuns) : null;
+        if (list) i++;
+        if (sp) out.push(Object.assign({ item: ++no, label: sp.label, value: sp.value.length ? sp.value : undefined, dot: false }, list ? { list } : {}));
+        else out.push(Object.assign({ item: ++no, value: t.r, dot: false }, list ? { list } : {}));
+        continue;
+      }
+      out.push({ p: t.r, indent: !t.nl });
+    }
     return out;
   }
 
@@ -181,69 +230,77 @@
   const LINE = (w, m, lw) => ({ canvas: [{ type: "line", x1: 0, y1: 0, x2: w || 480, y2: 0, lineWidth: lw || 0.8 }], margin: m || [0, 4, 0, 4] });
   const CW = 595.28 - 70 - 45; // ширина набора
   function block(b, mode) {
-    const rm = rmode(mode);
+    const R = x => runs(x, mode);
     if (b.raw) return b.raw;
     if (b.section) return { text: b.section, bold: true, fontSize: 12.5, characterSpacing: 0.4, margin: [0, 9, 0, 5], keepWithNext: true };
-    if (b.p !== undefined) return { text: runs(b.p, mode === "preview" ? "preview" : rm), alignment: b.align || "justify", leadingIndent: b.indent === false ? 0 : 35, bold: !!b.bold, margin: b.margin || [0, 0, 0, 6] };
-    if (b.html !== undefined) return { stack: htmlBlocks(b.html, rm) };
-    if (b.olist) return { stack: b.olist.map((li, i) => ({ columns: [{ width: 22, text: `${i + 1}.` }, { width: "*", text: runs(li, mode === "preview" ? "preview" : rm) }], columnGap: 2, margin: [8, 0, 0, 2], unbreakable: true })), margin: b.margin || [0, 0, 0, 4] };
+    if (b.formula) return { text: b.formula, bold: true, characterSpacing: 0.4, margin: b.margin || [0, 4, 0, 5], keepWithNext: true };
+    if (b.p !== undefined) return { text: R(b.p), alignment: b.align || "justify", leadingIndent: b.indent === false ? 0 : 35, bold: !!b.bold, margin: b.margin || [0, 0, 0, 6] };
+    // перечень (Приложение) — как подпункты рапорта: «1)» с отступом под текст пунктов
+    if (b.olist) return { stack: b.olist.map((li, i) => ({ columns: [{ width: 18, text: `${i + 1})` }, { width: "*", text: R(li) }], columnGap: 2, margin: [24, 0, 0, 2], unbreakable: true })), margin: b.margin || [0, 0, 0, 4] };
     if (b.rule) return LINE(CW, b.margin || [0, 8, 0, 8], b.width);
     if (b.space) return { text: "", margin: [0, b.space, 0, 0] };
+    if (b.signLine) return { columns: [{ width: 190, text: R(b.signLine[0]) }, { width: 170, canvas: [{ type: "line", x1: 0, y1: 14, x2: 170, y2: 14, lineWidth: 0.6 }] }, { width: "*", text: R(b.signLine[1] || ""), alignment: "right" }], columnGap: 10, margin: [0, 10, 0, 0], unbreakable: true };
     if (b.item !== undefined) {
-      const head = [{ text: b.label + (b.value !== undefined || b.list ? ":" : ""), bold: true }];
-      const val = b.value !== undefined ? runs(b.value, mode === "preview" ? "preview" : rm) : [];
+      const head = b.label ? [{ text: b.label + (b.value !== undefined || b.list ? ":" : ""), bold: true }] : [];
+      const val = b.value !== undefined ? R(b.value) : [];
       if (b.dot !== false && val.length) {
         const last = val[val.length - 1];
         if (typeof last.text === "string" && !last.link && !/[.!?…:;]\s*$/.test(last.text)) val.push({ text: "." });
       }
-      const stack = [{ text: head.concat(val.length ? [{ text: " " }].concat(val) : []), alignment: b.align || "left" }];
+      const stack = [{ text: head.concat(val.length && head.length ? [{ text: " " }] : []).concat(val), alignment: b.align || (b.label ? "left" : "justify") }];
       if (b.list && b.list.length) stack.push({
-        stack: b.list.map((li, i) => ({ columns: [{ width: 18, text: (b.bullet || "num") === "num" ? `${i + 1})` : "—" }, { width: "*", text: runs(li, mode === "preview" ? "preview" : rm), alignment: b.align || "left" }], columnGap: 2, margin: [0, 2, 0, 0], unbreakable: true })),
+        stack: b.list.map((li, i) => ({ columns: [{ width: 18, text: (b.bullet || "num") === "num" ? `${i + 1})` : "—" }, { width: "*", text: R(li), alignment: b.align || "left" }], columnGap: 2, margin: [0, 2, 0, 0], unbreakable: true })),
         margin: [0, 1, 0, 0]
       });
-      if (b.after) stack.push({ text: runs(b.after, mode === "preview" ? "preview" : rm), margin: [0, 2, 0, 0], alignment: "justify" });
+      if (b.after) stack.push({ text: R(b.after), margin: [0, 2, 0, 0], alignment: "justify" });
       return { columns: [{ width: 22, text: `${b.item}.`, bold: true }, { width: "*", stack }], columnGap: 2, margin: [0, 0, 0, 4] };
     }
     if (b.sign) {
+      // единый блок подписи: [Дата: …] / слева жирная подпись роли + должность, по центру печать и роспись, справа звание и И.О. Фамилия
       const s = b.sign, out = [];
-      if (s.date !== undefined) out.push({ text: [{ text: (s.dateLabel || "Дата") + ": ", bold: true }].concat(runs(s.date, mode === "preview" ? "preview" : rm)), margin: [0, 16, 0, 0] });
-      const rr = x => ({ text: runs(x, mode === "preview" ? "preview" : rm) });
-      let left, right;
-      if (s.left) left = s.left.map(rr);
-      else { left = [{ text: s.label || "Рапорт составил:", bold: true }]; if (s.pos) left.push({ text: s.pos }); }
-      right = s.right ? s.right.map(rr) : [rr(s.rank || ""), rr(s.name || "")];
+      if (s.date !== undefined) out.push({ text: [{ text: (s.dateLabel || "Дата") + ": ", bold: true }].concat(R(s.date)), margin: [0, 16, 0, 0] });
+      const left = [];
+      if (s.label) left.push({ text: R(s.label), bold: true });
+      (Array.isArray(s.pos) ? s.pos : s.pos ? [s.pos] : []).forEach(p => left.push({ text: R(p) }));
+      const right = (s.right || [s.rank || "", s.name || ""]).map(x => ({ text: R(x) }));
       out.push({
         columns: [
-          { width: "*", stack: left, margin: [0, s.leftTop || 40, 0, 0] },
+          { width: "*", stack: left, margin: [0, s.top || 40, 0, 0] },
           s.image ? { width: 180, image: s.image, fit: [180, 100] } : { width: 180, text: "" },
-          { width: s.rightWidth || 140, stack: right, alignment: "right", margin: [0, s.rightTop || 40, 0, 0] }
-        ], columnGap: 6, margin: [0, 0, 0, 0], unbreakable: true
+          { width: 140, stack: right, alignment: "right", margin: [0, s.top || 40, 0, 0] }
+        ], columnGap: 6, margin: [0, s.date !== undefined ? 0 : 14, 0, 0], unbreakable: true
       });
       return { stack: out, unbreakable: true };
     }
     return { text: "" };
   }
+  // блок справа (Кому / УТВЕРЖДАЮ): первая строка может начинаться с жирной подписи
+  const rightBlock = (lines, mode, top) => ({ columns: [{ width: "*", text: "" }, { width: 245, stack: lines.map(l => ({ text: runs(l, mode), margin: [0, 0, 0, 3] })) }], margin: [0, top, 0, 0] });
 
   function build(spec, mode) {
     const rm = mode === "preview" ? "preview" : rmode(mode);
     const content = [];
+    // шапка — одна на все документы
     if (spec.emblem !== false && A.emblem) content.push({ image: "emblem", width: 58, alignment: "center", margin: [0, 0, 0, 5] });
     (spec.header || C.header || []).forEach(l => content.push({ text: l, bold: true, alignment: "center", fontSize: 12, characterSpacing: 0.3, lineHeight: 1.1 }));
     if (spec.unitLine !== false && (spec.unitLine || C.unitLine)) content.push({ text: spec.unitLine || C.unitLine, alignment: "center", fontSize: 11.5, margin: [0, 2, 0, 0] });
     content.push(LINE(CW, [0, 7, 0, 0], 1.4)); content.push(LINE(CW, [0, 1.6, 0, 0], 0.5));
-    if (spec.approve) content.push({ columns: [{ width: "*", text: "" }, { width: 220, stack: spec.approve.map(l => ({ text: runs(l, rm) })), fontSize: 11.5 }], margin: [0, 10, 0, 0] });
-    if (spec.to) content.push({
-      columns: [{ width: "*", text: "" }, { width: 245, stack: spec.to.map(l => ({ text: runs(l, rm), margin: [0, 0, 0, 3] })) }], margin: [0, 14, 0, 0]
-    });
-    if (spec.title) content.push({ text: spec.title, fontSize: 18, bold: true, alignment: "center", characterSpacing: 6, margin: [0, 16, 0, 2] });
+    if (spec.approve) content.push(rightBlock(spec.approve, rm, 12));
+    if (spec.to) content.push(rightBlock(spec.to, rm, spec.approve ? 8 : 14));
+    // заголовок вразрядку: «П Р О Т О К О Л» и «ПРОТОКОЛ» выглядят одинаково, текст извлекается слитно
+    const title = String(spec.title || "").replace(/^((?:\S ){2,}\S)$/, m => m.replace(/ /g, ""));
+    if (title) content.push({ text: title, fontSize: 18, bold: true, alignment: "center", characterSpacing: 6, margin: [0, 16, 0, 2] });
     if (spec.subtitle) content.push({ text: spec.subtitle, alignment: "center", bold: true, fontSize: 12.5, margin: [0, 0, 0, 2] });
-    if (spec.metaLine) content.push({ columns: spec.metaLine.map((m, i, a) => ({ width: "*", text: runs(m, rm), alignment: a.length === 1 ? "center" : i === 0 ? "left" : i === a.length - 1 ? "right" : "center" })), fontSize: 12, margin: [0, 2, 0, 0] });
+    if (spec.metaLine) content.push({ text: runs(spec.metaLine, rm), alignment: "center", fontSize: 12, margin: [0, 2, 0, 0] });
+    if (spec.placeDate) content.push({ columns: [{ width: "*", text: runs(spec.placeDate[0], rm) }, { width: "*", text: runs(spec.placeDate[1], rm), alignment: "right" }], fontSize: 12, margin: [0, 8, 0, 0] });
     content.push({ text: "", margin: [0, 8, 0, 0] });
-    (spec.blocks || []).forEach(b => content.push(block(b, rm)));
+    const blocks = [];
+    (spec.blocks || []).forEach(b => { if (b.html !== undefined) blocks.push(...htmlBlocks(b.html, b)); else blocks.push(b); });
+    blocks.forEach(b => content.push(block(b, rm)));
     const motto = spec.motto === false ? "" : (spec.motto || C.motto || "");
     return {
       pageSize: "A4", pageMargins: [70, 50, 45, 62],
-      info: { title: spec.docTitle || spec.title || "Документ", author: spec.author || "", subject: spec.subtitle || "", creator: "ГУ ВП · автономные бланки", producer: "pdfmake" },
+      info: { title: spec.docTitle || title || "Документ", author: spec.author || "", subject: spec.subtitle || "", creator: "ГУ ВП · автономные бланки", producer: "pdfmake" },
       images: A.emblem ? { emblem: A.emblem } : {},
       defaultStyle: { font: "Tinos", fontSize: 12.5, lineHeight: 1.16 },
       header: cur => cur > 1 ? { text: String(cur), alignment: "center", fontSize: 11.5, margin: [0, 24, 0, 0] } : null,
@@ -411,5 +468,5 @@
   }
 
   window.VPDOC = { check, wire, safe, ready, build, pdfBytes, renderPages, downloadPDF, downloadPNG, preview, counter, persist, signImage, emblemData,
-    parseName, lcFirst, human, longDate, iso, cap, esc, isLink, normUrl, htmlBlocks, incNum, MONTHS };
+    parseName, lcFirst, human, longDate, iso, cap, esc, isLink, normUrl, htmlBlocks, htmlLines, incNum, MONTHS };
 })();

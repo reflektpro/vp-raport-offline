@@ -38,7 +38,7 @@
 
   // ---------- панель ----------
   OFF.forEach(id => { const v = localStorage.getItem("vp_" + id); if (v) $(id).value = v; });
-  OFF.forEach(id => $(id).addEventListener("input", () => { localStorage.setItem("vp_" + id, $(id).value.trim()); $(id).classList.remove("bad"); if (id === "fromName") updateSignature(); paint(); }));
+  OFF.forEach(id => $(id).addEventListener("input", () => { localStorage.setItem("vp_" + id, $(id).value.trim()); $(id).classList.remove("bad"); paint(); }));
 
   function fillCases() {
     $("caseSel").innerHTML = Object.entries(S.cases).map(([id, c]) =>
@@ -136,74 +136,20 @@
   $("evList").addEventListener("click", e => { if (!e.target.matches("[data-del]")) return; dd().ev.splice(+e.target.closest(".ev-row").dataset.i, 1); save(); fillEv(); paint(); });
   const evOk = () => dd().ev.filter(x => (x.t || "").trim() || (x.u || "").trim());
 
-  // ---------- подпись и печать (как на других бланках) ----------
-  function parseName(full) {
-    const p = full.trim().split(/\s+/).filter(Boolean).map(cap);
-    if (p.length >= 3) return { surname: p[0], short: `${p[0]} ${p[1][0]}. ${p[2][0]}.`, initial: p[1][0] };
-    if (p.length === 2) return { surname: p[1], short: `${p[1]} ${p[0][0]}.`, initial: p[0][0] };
-    if (p.length === 1) return { surname: p[0], short: p[0], initial: "" };
-    return null;
-  }
-  function rng(seed) { let h = 2166136261; for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; }
-  const meas = document.createElement("canvas").getContext("2d");
-  const stampSrc = new Image(); stampSrc.src = (window.VP_ASSETS && window.VP_ASSETS.stamp) || "stamp.png";
-  const stampReady = stampSrc.decode().catch(() => {}).then(() => updateSignature());
-  function updateSignature() {
-    const n = parseName($("fromName").value), t = $("autoText"), path = $("autoPath");
-    if (!n) { t.textContent = ""; path.setAttribute("d", ""); drawStamp("x"); return; }
-    const r = rng(n.surname + n.initial), len = 3 + Math.floor(r() * 3);
-    t.textContent = (n.initial || "") + n.surname[0] + n.surname.slice(1, len).toLowerCase();
-    const fs = 34 + Math.round(r() * 8); t.style.fontSize = fs + "px";
-    t.style.transform = `rotate(${-(4 + r() * 8)}deg) skewX(${-(6 + r() * 10)}deg)`;
-    meas.font = `${fs}px "Marck Script"`;
-    const tw = Math.min(150, meas.measureText(t.textContent).width), ex = 14 + tw, ey = 38 + r() * 8;
-    path.setAttribute("d", `M ${ex} ${ey} C ${ex + 18} ${ey + 22}, ${ex - 40} ${ey + 34}, ${18 + r() * 10} ${70 + r() * 8} C 4 84, ${60 + r() * 20} ${78 + r() * 6}, ${120 + r() * 20} ${64 + r() * 6} S ${200 + r() * 15} ${44 + r() * 10}, ${226 + r() * 8} ${40 + r() * 8}`);
-    drawStamp(n.surname);
-  }
-  function drawStamp(seed) {
-    if (!stampSrc.complete || !stampSrc.naturalWidth) return;
-    const SZ = 440, cx = SZ / 2, d = SZ * 0.97, r = rng("stamp" + seed);
-    const out = document.createElement("canvas"); out.width = out.height = SZ;
-    const g = out.getContext("2d"); g.translate(cx, cx); g.rotate((r() * 40 - 20) * Math.PI / 180); g.drawImage(stampSrc, -d / 2, -d / 2, d, d);
-    $("stamp").src = out.toDataURL("image/png");
-  }
-  async function stampLoaded() { await stampReady; const s = $("stamp"); if (s.getAttribute("src")) await s.decode().catch(() => {}); }
-  $("stampOn").addEventListener("change", e => $("stamp").style.visibility = e.target.checked ? "visible" : "hidden");
-  document.fonts && document.fonts.ready.then(updateSignature);
-
-  // ---------- бланк ----------
-  $("hdr").innerHTML = (C.header || []).map(esc).join("<br>");
+  // ---------- состояние бланка: проверки по УПК и предпросмотр ----------
   function ctx() {
     const c = Object.assign({}, cs());
     c.offPos = $("fromPos").value.trim(); c.offName = $("fromName").value.trim();
     c.offRank = $("fromRank").value.trim().toLowerCase();
     return c;
   }
+  const numText = (D, d, c) => D.noCase ? (d.regNo && d.regNo.trim() ? "Рег. № " + d.regNo.trim() : "") : "УД № " + (c.num || "____");
+  let page = null;
   function paint() {
-    const D = def(), d = dd(), c = ctx();
-    $("pTitle").textContent = D.title;
-    $("pSub").textContent = D.sub;
-    $("pDate").textContent = human(d.date);
-    $("pCity").textContent = C.city || "Москва";
-    // до возбуждения дела номера УД нет: у рапорта/заявления/отказа — собственный рег. № (необязательный)
-    $("pNum").textContent = D.noCase ? (d.regNo && d.regNo.trim() ? "Рег. № " + d.regNo.trim() : "") : (c.num ? "УД № " + c.num : "УД № ____");
-    $("pTo").innerHTML = D.to ? D.to(c, d) : ""; $("pTo").style.display = D.to ? "" : "none";
-    $("pApprove").style.display = D.approve ? "" : "none";
-    $("pBody").innerHTML = D.body(c, d);
-    const ev = evOk();
-    $("pApp").style.display = ev.length ? "" : "none";
-    $("pAppList").innerHTML = ev.map((x, i) => `<div class="app-row">${i + 1}. ${esc((x.t || "Материал").trim())}${x.u ? ` — <span class="ev-url">${esc(x.u)}</span>` : ""}</div>`).join("");
-    const ppl = (d.people || "").split("\n").map(s => s.trim()).filter(Boolean);
-    let extra = "";
-    if (D.applicantSign) extra += `<div class="ud-sl"><span>Заявитель</span><span class="ud-line"></span><span>${esc(d.appName || "")}</span></div>`;
-    if (D.proto) extra += ppl.map(p => `<div class="ud-sl"><span>${esc(p.split(/[—,-]/)[0].trim())}</span><span class="ud-line"></span><span>(подпись)</span></div>`).join("");
-    $("pSigns").innerHTML = extra; $("pSigns").style.display = extra ? "" : "none";
-    $("sPos").textContent = c.offPos || "должность"; $("sRank").textContent = $("fromRank").value.trim() || "звание";
-    const n = parseName(c.offName); $("sName").textContent = n ? n.short : "И. Фамилия";
-    $("sStatic").textContent = $("staticId").value.trim() || "____";
-    const probs = (D.check ? D.check(c, d) : []);
+    const D = def(), probs = D.check ? D.check(ctx(), dd()) : [];
     $("checks").innerHTML = probs.map(p => `<li>${esc(p)}</li>`).join("");
     $("checksBox").style.display = probs.length ? "" : "none";
+    if (page) page.refresh();
   }
 
   function validate() {
@@ -217,46 +163,49 @@
     return true;
   }
 
-  // ---------- PDF / PNG ----------
-  const unspace = t => /^(\S )+\S$/.test(t || "") ? t.replace(/ /g, "") : (t || "");
-  // фрагмент HTML бланка → строки текста (<br> — новая строка, теги снимаются)
-  const htmlLines = h => String(h || "").split(/<br\s*\/?>/i).map(x => new DOMParser().parseFromString(`<div>${x}</div>`, "text/html").body.textContent.trim()).filter(Boolean);
+  // ---------- документ (общий стиль, см. docs.js) ----------
+  // Текст бланков — ud-docs.js (по УПК RMRP), без изменений. Здесь только раскладка в общий вид:
+  // шапка ГУ ВП, заголовок вразрядку, № дела, город и дата; у протоколов — разделы I–III; подпись как у рапортов.
+  const SIGN_LABEL = D => D.proto ? "Протокол составил:" : /^П ?О ?С/.test(D.title) ? "Постановление вынес:" : /^Р ?А ?П/.test(D.title) ? "Рапорт составил:" : /^П ?О ?В/.test(D.title) ? "Повестку выписал:" : "Документ составил:";
   async function spec() {
     const VD = window.VPDOC;
     const D = def(), d = dd(), c = ctx();
     const ev = evOk();
-    const blocks = [{ html: D.body(c, d) }];
+    const blocks = [{ html: D.body(c, d), protocol: !!D.proto }];
     if (ev.length) {
-      blocks.push({ p: [{ t: "Приложение:", b: true }], indent: false, align: "left", margin: [0, 6, 0, 2] });
+      blocks.push({ formula: "Приложение:", margin: [0, 6, 0, 3] });
       blocks.push({ olist: ev.map(x => [(x.t || "Материал").trim()].concat(x.u ? [{ pdf: [" — ", { url: x.u }], png: "" }] : [])) });
     }
-    const n = parseName(c.offName);
+    const n = VD.parseName(c.offName);
     blocks.push({ sign: {
-      left: [c.offPos || { ph: "должность" }, $("fromRank").value.trim() || { ph: "звание" }],
-      right: [n ? n.short : { ph: "И. Фамилия" }, "статик № " + ($("staticId").value.trim() || "____")], leftTop: 36, rightTop: 36, rightWidth: 130,
-      image: await VD.signImage({ name: c.offName, stamp: $("stampOn").checked }) } });
+      label: SIGN_LABEL(D), pos: [c.offPos || { ph: "должность" }],
+      right: [$("fromRank").value.trim() ? VD.cap($("fromRank").value.trim()) : { ph: "звание" }, n ? n.short : { ph: "Фамилия И.О." }, "статик № " + ($("staticId").value.trim() || "____")],
+      image: n ? await VD.signImage({ name: c.offName, stamp: $("stampOn").checked }) : null } });
     const ppl = (d.people || "").split("\n").map(s => s.trim()).filter(Boolean);
-    const line = (label, right) => ({ columns: [{ width: 200, text: label }, { width: "*", canvas: [{ type: "line", x1: 0, y1: 14, x2: 200, y2: 14, lineWidth: 0.6 }] }, { width: "auto", text: right }], columnGap: 10, margin: [0, 10, 0, 0] });
-    if (D.applicantSign) blocks.push({ raw: line("Заявитель", d.appName || "") });
-    if (D.proto) ppl.forEach(pp => blocks.push({ raw: line(pp.split(/[—,-]/)[0].trim(), "(подпись)") }));
+    if (D.applicantSign) blocks.push({ signLine: ["Заявитель", d.appName || ""] });
+    if (D.proto) ppl.forEach(pp => blocks.push({ signLine: [pp.split(/[—,-]/)[0].trim(), "(подпись)"] }));
+    const to = D.to ? VD.htmlLines(D.to(c, d)) : null;
+    if (to && to.length) to[0] = [{ t: "Кому: ", b: true }].concat(to[0]);
+    const num = numText(D, d, c);
     return {
       docTitle: D.short + (c.num && !D.noCase ? " · УД № " + c.num : ""), author: c.offName,
-      unitLine: false, motto: false,
-      approve: D.approve ? ["УТВЕРЖДАЮ", "Прокурор ______________________", "«___» ____________ 20__ г.", "подпись ____________"] : null,
-      to: D.to ? htmlLines(D.to(c, d)).map(l => [l]) : null,
-      title: unspace(D.title), subtitle: D.sub,
-      metaLine: [human(d.date), C.city || "Москва", $("pNum").textContent || " "],
+      motto: false, // процессуальный документ: только то, что требует УПК, без девиза ведомства
+      approve: D.approve ? [[{ t: "УТВЕРЖДАЮ", b: true }], ["Прокурор ______________________"], ["«___» ____________ 20__ г."], ["подпись ____________"]] : null,
+      to, title: D.title, subtitle: D.sub,
+      metaLine: num ? (D.noCase ? [num] : ["УД № ", c.num ? c.num : { ph: "____" }]) : null,
+      placeDate: ["г. " + (C.city || "Москва"), d.date ? VD.longDate(d.date) : { ph: "«__» ______ 20__ г." }],
       blocks
     };
   }
   function fileBase() { return "ud_" + (String(cs().num).replace(/[^\w-]/g, "") || "x").slice(0, 16) + "_" + docKey; }
-  const page = window.VPDOC.wire({ spec, validate, base: () => fileBase() });
+  page = window.VPDOC.wire({ preview: $("preview"), spec, validate, base: () => fileBase() });
   function status(t, cls) { page.status(t, cls); }
+  $("stampOn").addEventListener("change", () => page.refresh());
   $("clearDoc").addEventListener("click", () => {
     if (!confirm("Очистить поля этого бланка в текущем деле?")) return;
     delete cs().docs[docKey]; save(); fillDoc();
   });
 
-  fillCases(); fillDoc(); updateSignature();
+  fillCases(); fillDoc();
   window.__ud = { spec, setDoc: k => { docKey = k; fillDoc(); }, S, save, fillCases, fillDoc, paint };
 })();
