@@ -32,7 +32,7 @@
     <div class="q">1. Военнослужащий</div>
     <div class="row2">
       <label class="plab">Воинское звание<input class="req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
-      <label class="plab">Игровой статик<input class="req" id="fromStatic" placeholder="12345"></label>
+      <label class="plab">Номер удостоверения<input class="req" id="fromStatic" placeholder="12345"></label>
     </div>
     <label class="plab">Имя Фамилия<input class="req" id="fromName" placeholder="Шерман Ассман" autocomplete="off"></label>
     <div class="q">2. Подразделение и должность</div>
@@ -52,7 +52,7 @@
 
     <h3>III. Итоговая информация</h3>
     <label class="plab q">6. Общий результат работы за неделю<textarea id="result" rows="2"></textarea></label>
-    <div class="norm-hint">Пусто — подставится автоматически (итог по баллам и пунктам).</div>
+    <div class="norm-hint">Пусто — подставится автоматически: «выполнено мероприятий и служебных действий: N». Общее количество баллов печатается отдельной строкой перед датой.</div>
     <label class="plab q">7. Дополнительные сведения<textarea id="extra" rows="2" placeholder="сложности, предложения; пусто — «отсутствуют»"></textarea></label>
     <h3>Выгрузка</h3>
     <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
@@ -86,9 +86,9 @@
 <script src="vendor/pdfmake.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="docs.js"></script>
+<script src="docs.js?v=3"></script>
 <script src="promo-rules.js"></script>
-<script src="criteria.js"></script>
-<script src="otchet.js"></script>
+<script src="criteria.js?v=3"></script>
+<script src="otchet.js?v=3"></script>
 </body>
 </html>

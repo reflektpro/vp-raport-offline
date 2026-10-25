@@ -83,21 +83,19 @@
     }
     function total() { return acts.reduce((s, a) => s + n(a.key) * (a.pts || 0), 0); }
     function reset() { state = { n: {}, links: {}, custom: [] }; save(); draw(); opt.onChange && opt.onChange(); }
-    // Строки пункта документа. att — общий счётчик приложений {n}. В PDF — адреса, в PNG — «Приложение №…».
+    // Строки пункта документа. att — общий счётчик приложений {n}.
+    // «Вид работы — штук: N (… баллов)», под ним каждая ссылка с новой строки: «а) адрес» (в PNG — «а) Приложение №N»).
     function docList(group, att, showPts) {
       return items().filter(i => i.group === group).map(i => {
-        const r = [`${i.text}: ${i.n}` + (showPts && i.pts ? ` (${i.n * i.pts} баллов)` : "")];
-        if (i.links.length) {
-          const a = att.n + 1, b = att.n + i.links.length; att.n = b;
-          const pdf = [];
-          i.links.forEach((u, j) => { pdf.push(j ? ", " : " — "); pdf.push({ url: u }); });
-          // PDF: «…: 2 — адрес1, адрес2»; PNG: «…: 2 — Приложения №1–2»
-          r.push({ pdf, png: a === b ? ` — Приложение №${a}` : ` — Приложения №${a}–${b}` });
-        }
-        return r;
+        const r = [`${i.text} — штук: `, { t: String(i.n), b: true }];
+        if (showPts && i.pts) r.push(` (${i.n * i.pts} баллов)`);
+        const links = i.links.map(u => ({ url: u, alt: `Приложение №${++att.n}` }));
+        return links.length ? { r, links } : r;
       });
     }
+    // всего выполнено мероприятий и служебных действий (сумма «штук» по всем отмеченным пунктам)
+    function count() { return items().reduce((s, i) => s + i.n, 0); }
     draw();
-    return { items, total, n, reset, docList, redraw: draw, state: () => state };
+    return { items, total, count, n, reset, docList, redraw: draw, state: () => state };
   };
 })();

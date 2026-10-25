@@ -23,11 +23,11 @@
     $("result").placeholder = autoResult();
   }
   function autoResult() {
-    const it = crit.items(), pts = crit.total();
-    if (!it.length) return "за отчётный период мероприятия не проводились.";
-    const acts = it.reduce((s, i) => s + i.n, 0);
-    return `выполнено мероприятий и служебных действий: ${acts}` + (pts ? `; набрано баллов: ${pts}` : "") + ".";
+    return `выполнено мероприятий и служебных действий: ${crit.count()}.`;
   }
+  // Общий результат по умолчанию — одна строка; баллы — отдельной строкой перед датой.
+  const summaryLine = () => ["выполнено мероприятий и служебных действий: ", { t: String(crit.count()), b: true }, "."];
+  const pointsLine = () => [{ t: "Общее количество баллов: ", b: true }, { t: String(crit.total()), b: true }];
 
   async function spec() {
     const n = D.parseName(v("fromName"));
@@ -45,19 +45,19 @@
       blocks: [
         { p: "Докладываю Вам о результатах выполнения служебных обязанностей и проведённых мероприятиях за установленный отчётный период." },
         { section: "I. ОБЩИЕ СВЕДЕНИЯ" },
-        { item: 1, label: "Военнослужащий", value: [rank, " ", n ? n.fi : { ph: "Фамилия Имя" }, ", игровой статик ", ph(v("fromStatic"), "____")] },
+        { item: 1, label: "Военнослужащий", value: [rank, " ", n ? n.fi : { ph: "Фамилия Имя" }, ", номер удостоверения ", ph(v("fromStatic"), "____")] },
         { item: 2, label: "Подразделение и должность", value: [ph(v("fromUnit"), "подразделение"), ", ", ph(D.lcFirst(v("fromPos")), "должность")] },
         { item: 3, label: "Отчётный период", value: [ph(D.human(v("fromDate")), "ДД.ММ.ГГГГ"), " — ", ph(D.human(v("toDate")), "ДД.ММ.ГГГГ")] },
         { section: "II. РЕЗУЛЬТАТЫ СЛУЖЕБНОЙ ДЕЯТЕЛЬНОСТИ" },
         listItem(4, "Основные критерии", main, "не выполнялись."),
         listItem(5, "Дополнительные критерии", extra, "не выполнялись."),
         { section: "III. ИТОГОВАЯ ИНФОРМАЦИЯ" },
-        { item: 6, label: "Общий результат работы за неделю", value: v("result") || autoResult() },
+        v("result") ? { item: 6, label: "Общий результат работы за неделю", value: v("result") } : { item: 6, label: "Общий результат работы за неделю", list: [summaryLine()], bullet: "dash" },
         { item: 7, label: "Дополнительные сведения", value: v("extra") || "отсутствуют." },
         { space: 4 },
         { p: ["На основании изложенного ", { t: "ПРОШУ", b: true }, " принять настоящий еженедельный отчёт, рассмотреть представленные результаты служебной деятельности и учесть их при оценке моей работы, выдать еженедельную премию."] },
         { sign: {
-          date: ph(D.human(v("date")), "ДД.ММ.ГГГГ"), dateLabel: "Дата подачи", label: "Рапорт составил:", pos: v("fromPos"),
+          before: [pointsLine()], date: ph(D.human(v("date")), "ДД.ММ.ГГГГ"), dateLabel: "Дата подачи", label: "Рапорт составил:", pos: v("fromPos"),
           rank, name: n ? n.short : { ph: "Фамилия И.О." },
           image: n ? await D.signImage({ name: v("fromName"), stamp: $("stampOn").checked }) : null } }
       ]

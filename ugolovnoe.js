@@ -174,12 +174,12 @@
     const blocks = [{ html: D.body(c, d), protocol: !!D.proto }];
     if (ev.length) {
       blocks.push({ formula: "Приложение:", margin: [0, 6, 0, 3] });
-      blocks.push({ olist: ev.map(x => [(x.t || "Материал").trim()].concat(x.u ? [{ pdf: [" — ", { url: x.u }], png: "" }] : [])) });
+      blocks.push({ olist: ev.map(x => x.u ? { r: [(x.t || "Материал").trim(), { pdf: [":"], png: [] }], links: [{ url: x.u }], single: true } : [(x.t || "Материал").trim()]) });
     }
     const n = VD.parseName(c.offName);
     blocks.push({ sign: {
       label: SIGN_LABEL(D), pos: [c.offPos || { ph: "должность" }],
-      right: [$("fromRank").value.trim() ? VD.cap($("fromRank").value.trim()) : { ph: "звание" }, n ? n.short : { ph: "Фамилия И.О." }, "статик № " + ($("staticId").value.trim() || "____")],
+      right: [$("fromRank").value.trim() ? VD.cap($("fromRank").value.trim()) : { ph: "звание" }, n ? n.short : { ph: "Фамилия И.О." }, "удостоверение № " + ($("staticId").value.trim() || "____")],
       image: n ? await VD.signImage({ name: c.offName, stamp: $("stampOn").checked }) : null } });
     const ppl = (d.people || "").split("\n").map(s => s.trim()).filter(Boolean);
     if (D.applicantSign) blocks.push({ signLine: ["Заявитель", d.appName || ""] });

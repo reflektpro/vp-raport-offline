@@ -82,7 +82,7 @@
     const n = D.parseName(name);
     const out = [];
     out.push(rank ? cap(rank) : { ph: "звание" }, " ", n ? (opt && opt.short ? n.short : n.fi) : { ph: "Фамилия Имя" });
-    if (!opt || !opt.noStatic) out.push(", статик ", ph(stat, "____"));
+    if (!opt || !opt.noStatic) out.push(", номер удостоверения ", ph(stat, "____"));
     if (unit !== undefined) out.push(", ", ph(unit, "подразделение"));
     if (opt && opt.pos !== undefined) out.push(", ", ph(D.lcFirst(opt.pos), "должность"));
     return out;
@@ -96,7 +96,8 @@
     const ev = evs();
     const evList = ev.map(e => {
       att.n++;
-      return [cap(e.desc || "Материал")].concat(e.url ? [{ pdf: [": ", { url: e.url }], png: ` — Приложение №${att.n}` }] : []).concat(["."]);
+      // описание, под ним ссылка отдельной строкой (в PNG — «Приложение №N»)
+      return e.url ? { r: [cap(e.desc || "Материал"), ":"], links: [{ url: e.url, alt: `Приложение №${att.n}.` }], single: true } : [cap(e.desc || "Материал"), "."];
     });
     const blocks = [
       { p: "Докладываю Вам, что в ходе исполнения служебных обязанностей было выявлено нарушение воинской дисциплины со стороны военнослужащего В/Ч №12132." },

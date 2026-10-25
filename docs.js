@@ -229,14 +229,35 @@
   // ---------------- документ → pdfmake ----------------
   const LINE = (w, m, lw) => ({ canvas: [{ type: "line", x1: 0, y1: 0, x2: w || 480, y2: 0, lineWidth: lw || 0.8 }], margin: m || [0, 4, 0, 4] });
   const CW = 595.28 - 70 - 45; // ширина набора
+  // Ссылки-доказательства — каждая с новой строки, с отступом: «а) адрес» (в PNG — «а) Приложение №N» без оформления ссылки).
+  const LETTERS = "абвгдежзиклмнопрстуфхцчшщэюя";
+  const mark = i => (LETTERS[i] || String(i + 1)) + ")";
+  function linkLines(links, mode, opt) {
+    opt = opt || {};
+    const lines = links.map((l, i) => {
+      const r = runs([typeof l === "string" ? { url: l } : l], mode);
+      if (!r.length) return null;
+      const one = links.length === 1 && opt.single;
+      return one ? { text: r, margin: [0, 1, 0, 0] } : { columns: [{ width: 16, text: mark(i) }, { width: "*", text: r }], columnGap: 2, margin: [0, 1, 0, 0] };
+    }).filter(Boolean);
+    return lines.length ? { stack: lines, margin: [opt.indent == null ? 14 : opt.indent, 1, 0, 0] } : null;
+  }
+  // элемент перечня: runs или {r: runs, links: [url | {url, alt}], single}
+  function listCell(li, mode, align) {
+    const plain = !li || Array.isArray(li) || typeof li === "string" || li.r === undefined;
+    const text = { text: runs(plain ? li : li.r, mode), alignment: align || "left" };
+    if (plain || !li.links || !li.links.length) return text;
+    const ll = linkLines(li.links, mode, { single: li.single });
+    return ll ? { stack: [text, ll] } : text;
+  }
   function block(b, mode) {
     const R = x => runs(x, mode);
     if (b.raw) return b.raw;
-    if (b.section) return { text: b.section, bold: true, fontSize: 12.5, characterSpacing: 0.4, margin: [0, 9, 0, 5], keepWithNext: true };
+    if (b.section) return { text: b.section, bold: true, fontSize: 12.5, characterSpacing: 0.4, margin: [0, 14, 0, 7], keepWithNext: true };
     if (b.formula) return { text: b.formula, bold: true, characterSpacing: 0.4, margin: b.margin || [0, 4, 0, 5], keepWithNext: true };
     if (b.p !== undefined) return { text: R(b.p), alignment: b.align || "justify", leadingIndent: b.indent === false ? 0 : 35, bold: !!b.bold, margin: b.margin || [0, 0, 0, 6] };
     // перечень (Приложение) — как подпункты рапорта: «1)» с отступом под текст пунктов
-    if (b.olist) return { stack: b.olist.map((li, i) => ({ columns: [{ width: 18, text: `${i + 1})` }, { width: "*", text: R(li) }], columnGap: 2, margin: [24, 0, 0, 2], unbreakable: true })), margin: b.margin || [0, 0, 0, 4] };
+    if (b.olist) return { stack: b.olist.map((li, i) => ({ columns: [{ width: 18, text: `${i + 1})` }, { width: "*", stack: [listCell(li, mode)] }], columnGap: 2, margin: [24, 0, 0, 3], unbreakable: true })), margin: b.margin || [0, 0, 0, 6] };
     if (b.rule) return LINE(CW, b.margin || [0, 8, 0, 8], b.width);
     if (b.space) return { text: "", margin: [0, b.space, 0, 0] };
     if (b.signLine) return { columns: [{ width: 190, text: R(b.signLine[0]) }, { width: 170, canvas: [{ type: "line", x1: 0, y1: 14, x2: 170, y2: 14, lineWidth: 0.6 }] }, { width: "*", text: R(b.signLine[1] || ""), alignment: "right" }], columnGap: 10, margin: [0, 10, 0, 0], unbreakable: true };
@@ -247,18 +268,22 @@
         const last = val[val.length - 1];
         if (typeof last.text === "string" && !last.link && !/[.!?…:;]\s*$/.test(last.text)) val.push({ text: "." });
       }
-      const stack = [{ text: head.concat(val.length && head.length ? [{ text: " " }] : []).concat(val), alignment: b.align || (b.label ? "left" : "justify") }];
-      if (b.list && b.list.length) stack.push({
-        stack: b.list.map((li, i) => ({ columns: [{ width: 18, text: (b.bullet || "num") === "num" ? `${i + 1})` : "—" }, { width: "*", text: R(li), alignment: b.align || "left" }], columnGap: 2, margin: [0, 2, 0, 0], unbreakable: true })),
-        margin: [0, 1, 0, 0]
-      });
-      if (b.after) stack.push({ text: R(b.after), margin: [0, 2, 0, 0], alignment: "justify" });
-      return { columns: [{ width: 22, text: `${b.item}.`, bold: true }, { width: "*", stack }], columnGap: 2, margin: [0, 0, 0, 4] };
+      const headText = { text: head.concat(val.length && head.length ? [{ text: " " }] : []).concat(val), alignment: b.align || (b.label ? "left" : "justify") };
+      const listRow = (li, i) => ({ columns: [{ width: 18, text: (b.bullet || "num") === "num" ? `${i + 1})` : "—" }, { width: "*", stack: [listCell(li, mode, b.align)] }], columnGap: 2, margin: [0, 3, 0, 0], unbreakable: true });
+      const row = (num, stack, extra) => Object.assign({ columns: [{ width: 22, text: num, bold: true }, { width: "*", stack }], columnGap: 2 }, extra || {});
+      // заголовок пункта не отрывается от первой строки перечня: первая строка — вместе с ним, остальные — отдельными строками
+      const list = b.list && b.list.length ? b.list : [];
+      const rows = [row(`${b.item}.`, [headText].concat(list.length ? [listRow(list[0], 0)] : []), list.length ? { unbreakable: true } : {})];
+      list.slice(1).forEach((li, j) => rows.push(row("", [listRow(li, j + 1)], { unbreakable: true })));
+      if (b.after) rows.push(row("", [{ text: R(b.after), margin: [0, 2, 0, 0], alignment: "justify" }]));
+      return rows.length === 1 ? Object.assign(rows[0], { margin: [0, 0, 0, 6] }) : { stack: rows, margin: [0, 0, 0, 6] };
     }
     if (b.sign) {
       // единый блок подписи: [Дата: …] / слева жирная подпись роли + должность, по центру печать и роспись, справа звание и И.О. Фамилия
       const s = b.sign, out = [];
-      if (s.date !== undefined) out.push({ text: [{ text: (s.dateLabel || "Дата") + ": ", bold: true }].concat(R(s.date)), margin: [0, 16, 0, 0] });
+      const pre = (s.before || []).map((x, i) => ({ text: R(x), margin: [0, i ? 3 : 16, 0, 0] }));
+      out.push(...pre);
+      if (s.date !== undefined) out.push({ text: [{ text: (s.dateLabel || "Дата") + ": ", bold: true }].concat(R(s.date)), margin: [0, pre.length ? 4 : 16, 0, 0] });
       const left = [];
       if (s.label) left.push({ text: R(s.label), bold: true });
       (Array.isArray(s.pos) ? s.pos : s.pos ? [s.pos] : []).forEach(p => left.push({ text: R(p) }));
@@ -296,7 +321,19 @@
     content.push({ text: "", margin: [0, 8, 0, 0] });
     const blocks = [];
     (spec.blocks || []).forEach(b => { if (b.html !== undefined) blocks.push(...htmlBlocks(b.html, b)); else blocks.push(b); });
-    blocks.forEach(b => content.push(block(b, rm)));
+    // заголовок раздела / формула («ПРОШУ:») не остаются внизу листа одни: склеиваем их с первой строкой следующего блока
+    const plainLen = b => b && b.p !== undefined ? runText(runs(b.p, rm).map(x => x.text)).length : 0;
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i], nb = blocks[i + 1];
+      if (!(b.section || b.formula) || !nb || nb.section || nb.sign || nb.space) { content.push(block(b, rm)); continue; }
+      const head = block(b, rm), nxt = block(nb, rm);
+      i++;
+      if (nb.item !== undefined && nxt.stack && nxt.stack.length > 1) {
+        content.push({ stack: [head, nxt.stack[0]], unbreakable: true });
+        content.push({ stack: nxt.stack.slice(1), margin: nxt.margin });
+      } else if (nb.item !== undefined || (nb.olist && nb.olist.length <= 6) || (nb.p !== undefined && plainLen(nb) < 600)) content.push({ stack: [head, nxt], unbreakable: true });
+      else { content.push(head); content.push(nxt); }
+    }
     const motto = spec.motto === false ? "" : (spec.motto || C.motto || "");
     return {
       pageSize: "A4", pageMargins: [70, 50, 45, 62],

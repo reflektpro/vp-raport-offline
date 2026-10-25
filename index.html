@@ -32,7 +32,7 @@
     <h3>От кого (составитель)</h3>
     <div class="row2">
       <label class="plab">Звание<input class="req" id="fromRank" list="ranks" placeholder="Лейтенант"></label>
-      <label class="plab">Статик<input id="fromStatic" placeholder="12345"></label>
+      <label class="plab">Номер удостоверения<input id="fromStatic" placeholder="12345"></label>
     </div>
     <label class="plab">Имя Фамилия<input class="req" id="fromName" placeholder="Шерман Ассман" autocomplete="off"></label>
     <label class="plab">Должность<input class="req" id="fromPos" list="positions" placeholder="Инспектор ВП"></label>
@@ -43,12 +43,12 @@
     <div id="detBox" class="row3">
       <label class="plab">Звание<input id="detRank" list="ranks"></label>
       <label class="plab">Имя Фамилия<input id="detName"></label>
-      <label class="plab">Статик<input id="detStatic"></label>
+      <label class="plab">Номер удостоверения<input id="detStatic"></label>
     </div>
     <div class="q">2. Военнослужащий, допустивший нарушение</div>
     <div class="row2">
       <label class="plab">Звание<input class="req" id="tRank" list="ranks" placeholder="Рядовой"></label>
-      <label class="plab">Статик<input class="req" id="tStatic" placeholder="54321"></label>
+      <label class="plab">Номер удостоверения<input class="req" id="tStatic" placeholder="54321"></label>
     </div>
     <label class="plab">Имя Фамилия<input class="req" id="tName" placeholder="Иван Петров" autocomplete="off"></label>
     <label class="plab">Подразделение<input class="req" id="tUnit" list="units" placeholder="Рота охраны и обеспечения"></label>
@@ -118,8 +118,8 @@
 <script src="vendor/pdfmake.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
-<script src="docs.js"></script>
+<script src="docs.js?v=3"></script>
 <script src="vygovor-rules.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
