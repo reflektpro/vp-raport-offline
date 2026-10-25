@@ -59,11 +59,12 @@
   }
 
   // ---------------- подпись + печать одной картинкой ----------------
-  // Логический холст 360×200 (2 px на pt): печать слева (центр 100,100), роспись по центру печати.
+  // Логический холст 200×200 (2 px на pt → 100×100 pt): печать в центре (100,100), роспись по центру печати.
+  // Справа от картинки сразу идёт колонка звания и И.О. Фамилии (см. блок подписи в build).
   async function signImage(opt) {
     await ready;
     const n = parseName(opt.name || "");
-    const W = 360, H = 200, K = 2.5;
+    const W = 200, H = 200, K = 2.5;
     const cv = document.createElement("canvas"); cv.width = W * K; cv.height = H * K;
     const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.scale(K, K);
     const stamp = await imgs.stamp;
@@ -111,6 +112,16 @@
       }
     }
     return cv.toDataURL("image/jpeg", 0.92); // белый фон: картинка стоит в своей колонке и не перекрывает текст
+  }
+  // ширина строки (pt) в шрифте документа: те же Tinos, что встраиваются в PDF
+  let mctx = null;
+  function textWidth(rs, size) {
+    mctx = mctx || document.createElement("canvas").getContext("2d");
+    return (Array.isArray(rs) ? rs : [rs]).reduce((w, x) => {
+      const t = typeof x === "string" ? x : x && x.text != null ? String(x.text) : "";
+      mctx.font = `${x && x.italics ? "italic " : ""}${x && x.bold ? "700 " : ""}${size}px Tinos`;
+      return w + mctx.measureText(t).width;
+    }, 0);
   }
   async function emblemData() { return A.emblem || null; }
 
@@ -310,13 +321,18 @@
       const left = [];
       if (s.label) left.push({ text: R(s.label), bold: true });
       (Array.isArray(s.pos) ? s.pos : s.pos ? [s.pos] : []).forEach(p => left.push({ text: R(p) }));
-      const right = (s.right || [s.rank || "", s.name || ""]).map(x => ({ text: R(x) }));
+      const rightRuns = (s.right || [s.rank || "", s.name || ""]).map(x => R(x));
+      const right = rightRuns.map(t => ({ text: t }));
+      // Печать с росписью стоит вплотную к колонке звания и И.О. Фамилии: ширина колонки = фактическая ширина
+      // самой длинной строки (+3 pt запаса), печать (88 pt в картинке 100 pt) — сразу левее, зазор ≈ 6 + 3 = 9 pt (12 px).
+      const rw = Math.min(230, Math.ceil(Math.max(40, ...rightRuns.map(t => textWidth(t, 12.5)))) + 3);
       out.push({
         columns: [
           { width: "*", stack: left, margin: [0, s.top || 40, 0, 0] },
-          s.image ? { width: 180, image: s.image, fit: [180, 100] } : { width: 180, text: "" },
-          { width: 140, stack: right, alignment: "right", margin: [0, s.top || 40, 0, 0] }
-        ], columnGap: 6, margin: [0, s.date !== undefined ? 0 : 14, 0, 0], unbreakable: true
+          { width: 8, text: "" },
+          s.image ? { width: 100, image: s.image, fit: [100, 100] } : { width: 100, text: "" },
+          { width: rw, stack: right, alignment: "right", margin: [0, s.top || 40, 0, 0] }
+        ], columnGap: 0, margin: [0, s.date !== undefined ? 0 : 14, 0, 0], unbreakable: true
       });
       return { stack: out, unbreakable: true };
     }
