@@ -264,6 +264,9 @@
   const LINE = (w, m, lw) => ({ canvas: [{ type: "line", x1: 0, y1: 0, x2: w || 480, y2: 0, lineWidth: lw || 0.8 }], margin: m || [0, 4, 0, 4] });
   const CW = 595.28 - 70 - 45; // ширина набора
   const DOWN = 21.3; // печать с росписью ниже строки подписи на 0,75 см
+  let signDown = 21.3; // текущий сдвиг вниз для build (у низа листа может быть меньше, см. pdfBytes)
+  const SIGN_IMG = 120; // картинка печати с росписью (было 100 pt, +20%); колонка под неё остаётся 100 pt, центр тот же
+  const SIGN_GROW = (SIGN_IMG - 100) / 2; // на сколько картинка выходит за колонку с каждой стороны
   // Ссылки-доказательства — каждая с новой строки, с отступом: «а) адрес» (в PNG — «а) Приложение №N» без оформления ссылки).
   const LETTERS = "абвгдежзиклмнопрстуфхцчшщэюя";
   const mark = i => (LETTERS[i] || String(i + 1)) + ")";
@@ -331,17 +334,19 @@
       // свободного места слева от картинки), а при совсем длинной строке левая колонка сжимается.
       const rw = Math.min(230, Math.ceil(Math.max(40, ...rightRuns.map(t => textWidth(t, 12.5)))) + 3);
       const LW = CW - 332, SHIFT = 85; // 3 см левее «вплотную»
-      const free = CW - LW - rw - 100 - 6;
+      // левый край печати = левый край колонки картинки + 50 − 0,44·SIGN_IMG; он должен быть ≥ 6 pt правее левой колонки
+      const free = CW - LW - rw - 100 - (0.44 * SIGN_IMG - 50) - 6;
       const shift = Math.max(0, Math.min(SHIFT, free));
       out.push({
         columns: [
           free >= 0 ? { width: LW, stack: left, margin: [0, s.top || 40, 0, 0] } : { width: "*", stack: left, margin: [0, s.top || 40, 0, 0] },
           free >= 0 ? { width: "*", text: "" } : { width: 6, text: "" },
           // на 0,75 см ниже: relativePosition сдвигает только картинку, раскладка (и всё ниже) не меняется
-          s.image ? { width: 100, image: s.image, fit: [100, 100], relativePosition: { x: 0, y: DOWN } } : { width: 100, text: "" },
+          // +20%: картинка 120 pt, сдвинута на −10/−10 — центр печати и росписи остаётся на месте
+          s.image ? { width: 100, image: s.image, fit: [SIGN_IMG, SIGN_IMG], relativePosition: { x: -SIGN_GROW, y: signDown - SIGN_GROW } } : { width: 100, text: "" },
           { width: shift, text: "" },
           { width: rw, stack: right, alignment: "right", margin: [0, s.top || 40, 0, 0] }
-        ], columnGap: 0, margin: [0, s.date !== undefined ? 0 : 14, 0, b._last && s.image ? 14 : 0], unbreakable: true
+        ], id: "vp-sign", columnGap: 0, margin: [0, s.date !== undefined ? 0 : 14, 0, 0], unbreakable: true
       });
       return { stack: out, unbreakable: true };
     }
@@ -350,7 +355,8 @@
   // блок справа (Кому / УТВЕРЖДАЮ): первая строка может начинаться с жирной подписи
   const rightBlock = (lines, mode, top) => ({ columns: [{ width: "*", text: "" }, { width: 245, stack: lines.map(l => ({ text: runs(l, mode), margin: [0, 0, 0, 3] })) }], margin: [0, top, 0, 0] });
 
-  function build(spec, mode) {
+  function build(spec, mode, opt) {
+    signDown = opt && opt.down != null ? opt.down : DOWN;
     const rm = mode === "preview" ? "preview" : rmode(mode);
     const content = [];
     // шапка — одна на все документы
@@ -400,10 +406,41 @@
   async function pdfBytes(spec, mode) {
     await ready;
     if (!window.pdfMake) throw new Error("pdfmake не загрузился");
-    const dd = build(spec, mode);
-    return new Promise((res, rej) => {
+    const make = dd => new Promise((res, rej) => {
       try { pdfMake.createPdf(dd, null, FONTS, VFS).getBuffer(b => res(new Uint8Array(b))); } catch (e) { rej(e); }
     });
+    // Печать опущена на DOWN и рисуется поверх (relativePosition), поэтому у самого низа листа она могла бы
+    // зайти на линию девиза или за край листа. После первого прохода смотрим (pdf.js), где реально нарисована
+    // картинка печати на последнем листе; если не влезает — второй проход поднимает только её
+    // (раскладка текста и число листов не меняются).
+    const bytes = await make(build(spec, mode));
+    if (!hasSign(spec)) return bytes;
+    let bottom = null;
+    try { bottom = await signBottom(bytes); } catch (e) { bottom = null; }
+    if (bottom == null) return bytes;
+    const motto = spec.motto === false ? "" : (spec.motto || C.motto || "");
+    const limit = motto ? 841.89 - 62 + 14 - 4 : 841.89 - 14; // линия девиза (−4 pt) или край листа
+    if (bottom <= limit) return bytes;
+    return make(build(spec, mode, { down: DOWN - (bottom - limit) }));
+  }
+  const hasSign = spec => (spec.blocks || []).some(b => b && b.sign && b.sign.image);
+  // нижний край круга печати (pt от верха листа) на последнем листе: ищем картинку SIGN_IMG×SIGN_IMG в потоке рисования
+  async function signBottom(bytes) {
+    const L = pdfjs();
+    const doc = await L.getDocument({ data: bytes.slice(), isEvalSupported: false, useSystemFonts: false }).promise;
+    try {
+      const page = await doc.getPage(doc.numPages), ops = await page.getOperatorList(), H = page.view[3];
+      const O = L.OPS, stack = [];
+      let m = [1, 0, 0, 1, 0, 0], found = null;
+      const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+      for (let i = 0; i < ops.fnArray.length; i++) {
+        const fn = ops.fnArray[i], args = ops.argsArray[i];
+        if (fn === O.save) stack.push(m); else if (fn === O.restore) m = stack.pop() || [1, 0, 0, 1, 0, 0];
+        else if (fn === O.transform) m = mul(m, args);
+        else if ((fn === O.paintImageXObject || fn === O.paintJpegXObject) && Math.abs(m[0] - SIGN_IMG) < 0.5 && Math.abs(m[3] - SIGN_IMG) < 0.5) found = m;
+      }
+      return found ? H - found[5] - SIGN_IMG * 0.06 : null;
+    } finally { doc.destroy(); }
   }
   let pdfjsOk = false;
   function pdfjs() {

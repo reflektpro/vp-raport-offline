@@ -50,6 +50,7 @@ window.PROMO = {
     { key: "patrol",     name: "Организация патрулирования", pts: 0, doc: "Организовано патрулирований", group: "extra", legacy: true, hint: "нужен для ступеней повышения" },
     { key: "lecture_va", name: "Проведение лекции ВА", pts: 0, group: "extra" },
     { key: "exam_va",    name: "Проведение экзамена ВА", pts: 0, group: "extra" },
+    { key: "thanks",     name: "Благодарность от руководства", pts: 0, group: "extra" },
     // ── Работа ГУ ВП ──
     { key: "city",       name: "Вывести военнослужащего в город", pts: 20, group: "gu", hint: "за 1 человека" },
     { key: "reattest",   name: "Провести переаттестацию", pts: 30, group: "gu" },
