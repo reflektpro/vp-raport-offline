@@ -250,6 +250,9 @@ textarea.f{display:block;width:100%;resize:none;overflow:hidden;line-height:1.5;
 .preview{width:100%;min-height:400px}
 .pv-page{display:block;width:100%;height:auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.55);margin-bottom:18px}
 .cust-name{flex:1;min-width:0;background:#111614;color:#e9e6dc;border:1px solid #3a4440;border-radius:3px;padding:5px;font-size:13px}
+.act-vp{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:4px;font-size:12px}
+.act-vp input{width:64px;height:24px;text-align:center;background:#111614;border:1px solid #3a4440;color:#fff;margin-left:4px;-moz-appearance:textfield}
+.act-note{font-size:11px;opacity:.7;font-style:italic;margin-top:2px}
 .cust-grp{display:flex;gap:12px;font-size:12px;opacity:.8;margin-top:4px}
 .export-row{display:flex;gap:8px}.export-row .btn{flex:1}
 @media (max-width:1240px){.layout.v2{flex-direction:column;align-items:center}.form-panel{position:static;width:100%;max-width:794px;flex:none;max-height:none}.preview-wrap{width:100%;max-width:794px;flex:none}}

@@ -14,10 +14,10 @@
   if (!$("toDate").value) $("toDate").value = D.iso(now);
   if (!$("fromDate").value) { const w = new Date(now); w.setDate(now.getDate() - 6); $("fromDate").value = D.iso(w); }
 
-  const crit = window.VP_CRIT({ box: $("acts"), acts: P.acts, storeKey: "vp_week_crit", onChange: () => { paint(); page.refresh(); } });
+  const crit = window.VP_CRIT({ box: $("acts"), acts: P.acts, storeKey: "vp_week_crit", weekly: true, onChange: () => { paint(); page.refresh(); } });
   function paint() {
     const pts = crit.total();
-    $("barText").textContent = pts ? `${pts} баллов за неделю` : "0 баллов";
+    $("barText").textContent = pts ? `${pts} ${window.VP_BALLOV(pts)} за неделю (только основная отчётность)` : "0 баллов (считается только основная отчётность)";
     $("barFill").style.width = pts ? "100%" : "0"; $("barFill").classList.toggle("full", pts > 0);
     $("vygNote").classList.toggle("ok", !(crit.n("vzysk") > 0 && crit.n("vygovor") > 0));
     $("result").placeholder = autoResult();
