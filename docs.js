@@ -73,24 +73,30 @@
       g.drawImage(stamp, -d / 2, -d / 2, d, d); g.restore();
     }
     if (n) {
-      // Роспись рисуется на отдельном прозрачном холсте, затем по фактическим границам нарисованного
-      // (текст + росчерк) ставится так, чтобы её центр совпал с центром печати (100, 100).
-      const sc = document.createElement("canvas"); sc.width = W * K; sc.height = H * K;
+      // Роспись (буквы + росчерк) строится симметрично вокруг центра букв: росчерк уходит влево и вправо
+      // от букв на одинаковое расстояние. Рисуется на отдельном прозрачном холсте, затем по фактическим
+      // границам нарисованного ставится центром в центр печати (100, 100). Буквы на ~30% крупнее прежних.
+      const sc = document.createElement("canvas"); sc.width = W * 2 * K; sc.height = H * K;
       const sg = sc.getContext("2d"); sg.scale(K, K);
       const r = rng(n.surname + n.initial), len = 3 + Math.floor(r() * 3);
       const text = (n.initial || "") + n.surname[0] + n.surname.slice(1, len).toLowerCase();
-      const fs = 34 + Math.round(r() * 8);
-      const ox = 130, oy = 58; // левый верх блока росписи 240×100 (до центровки)
-      sg.save(); sg.fillStyle = "#16205e"; sg.strokeStyle = "#16205e";
+      let fs = Math.round((34 + Math.round(r() * 8)) * 1.3);
       sg.font = `${fs}px "Marck Script"`;
-      const tw = Math.min(150, sg.measureText(text).width);
-      sg.save(); sg.translate(ox + 12, oy + 4 + fs * 0.75);
-      sg.rotate(-(4 + r() * 8) * Math.PI / 180); sg.transform(1, 0, Math.tan(-(6 + r() * 10) * Math.PI / 180), 1, 0, 0);
+      const MAXW = 150; // ширина букв: роспись с росчерком остаётся в своей колонке и не задевает текст рядом
+      let tw = sg.measureText(text).width;
+      if (tw > MAXW) { fs = Math.floor(fs * MAXW / tw); sg.font = `${fs}px "Marck Script"`; tw = sg.measureText(text).width; }
+      const X = W, Y = 100, rot = -(4 + r() * 6) * Math.PI / 180, skew = Math.tan(-(6 + r() * 10) * Math.PI / 180);
+      sg.fillStyle = "#16205e"; sg.strokeStyle = "#16205e";
+      sg.save(); sg.translate(X, Y); sg.rotate(rot);
+      sg.save(); sg.transform(1, 0, skew, 1, 0, 0); sg.textAlign = "center"; sg.textBaseline = "alphabetic";
       sg.fillText(text, 0, 0); sg.restore();
-      const ex = 14 + tw, ey = 38 + r() * 8;
-      const d = `M ${ex} ${ey} C ${ex + 18} ${ey + 22}, ${ex - 40} ${ey + 34}, ${18 + r() * 10} ${70 + r() * 8} C 4 84, ${60 + r() * 20} ${78 + r() * 6}, ${120 + r() * 20} ${64 + r() * 6} S ${200 + r() * 15} ${44 + r() * 10}, ${226 + r() * 8} ${40 + r() * 8}`;
-      sg.translate(ox, oy); sg.lineWidth = 2.2; sg.lineCap = "round"; sg.stroke(new Path2D(d)); sg.restore();
-      // границы нарисованного (в пикселях холста)
+      // росчерк: из конца букв петлёй вниз-влево под буквы, затем ровной волной вправо — до той же длины, что и слева
+      const h = tw / 2, m = 14 + r() * 6, dy = fs * 0.32;
+      const d = `M ${h - 4} ${-fs * 0.2} C ${h + 14} ${dy * 0.6}, ${h - 30} ${dy + 10}, ${-h - m + 6} ${dy + 6} ` +
+        `C ${-h - m - 8} ${dy + 5}, ${-h - m + 4} ${dy - 4}, ${-h * 0.4} ${dy - 2 + r() * 4} ` +
+        `S ${h * 0.6} ${dy - 8 + r() * 4}, ${h + m} ${dy - 10 - r() * 4}`;
+      sg.lineWidth = 2.6; sg.lineCap = "round"; sg.lineJoin = "round"; sg.stroke(new Path2D(d)); sg.restore();
+      // границы нарисованного (в пикселях холста) → центр росписи в центр печати
       const px = sg.getImageData(0, 0, sc.width, sc.height).data;
       let x0 = sc.width, y0 = sc.height, x1 = -1, y1 = -1;
       for (let y = 0; y < sc.height; y++) for (let x = 0; x < sc.width; x++) if (px[(y * sc.width + x) * 4 + 3] > 24) {
@@ -98,10 +104,10 @@
       }
       if (x1 >= 0) {
         const bw = (x1 - x0 + 1) / K, bh = (y1 - y0 + 1) / K;
-        const k = Math.min(1, 196 / bw, 120 / bh); // не шире ~печати (176) с небольшим выходом за круг
+        const k = Math.min(1, 196 / bw); // страховка: не шире колонки (центр 100 → 2…198)
         const cx = 100, cy = 100, dw = bw * k, dh = bh * k;
         g.drawImage(sc, x0, y0, x1 - x0 + 1, y1 - y0 + 1, cx - dw / 2, cy - dh / 2, dw, dh);
-        signImage.last = { cx: cx, cy: cy, w: dw, h: dh, stampC: [100, 100], stampD: 176, canvas: [W, H] };
+        signImage.last = { text, fs, tw, w: dw, h: dh, k };
       }
     }
     return cv.toDataURL("image/jpeg", 0.92); // белый фон: картинка стоит в своей колонке и не перекрывает текст
