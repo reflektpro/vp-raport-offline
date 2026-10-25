@@ -111,12 +111,13 @@
     function reset() { state = { n: {}, links: {}, custom: [], vp: {} }; save(); draw(); opt.onChange && opt.onChange(); }
     // Строки пункта документа. att — общий счётчик приложений {n}.
     // «Вид работы — штук: N (… баллов);», под ним каждая ссылка с новой строки: «а) адрес» (в PNG — «а) Приложение №N»).
-    // Каждое действие заканчивается «;» (и последнее в группе тоже); свой «.», «,» или «;» в конце названия убирается.
+    // Каждое действие заканчивается «;», последнее в разделе — «.»; свой «.», «,» или «;» в конце названия убирается.
     function docList(group, att, showPts) {
-      return items().filter(i => i.group === group).map(i => {
+      const list = items().filter(i => i.group === group);
+      return list.map((i, idx) => {
         const r = [`${String(i.text).replace(/[\s.,;]+$/, "")} — штук: `, { t: String(i.n), b: true }];
         if (showPts && i.sum) r.push(` (${i.sum} ${ballov(i.sum)})`);
-        r.push(";");
+        r.push(idx === list.length - 1 ? "." : ";");
         const links = i.links.map(u => ({ url: u, alt: `Приложение №${++att.n}` }));
         return links.length ? { r, links } : r;
       });
