@@ -46,14 +46,14 @@
     <h3>II. Результаты служебной деятельности</h3>
     <div class="bar"><div class="bar-fill" id="barFill"></div><span id="barText">0 баллов</span></div>
     <label class="chk"><input type="checkbox" id="showPts" checked> Указывать баллы в документе</label>
-    <div class="acts-hint">Жми «+» за каждое дело и вставляй ссылки на доказательства, по одной на строку. В PDF ссылки видны и кликабельны, в PNG вместо них «Приложение №N». Свой пункт — кнопкой внизу списка. Деление на основные и дополнительные критерии предварительное.</div>
+    <div class="acts-hint">Жми «+» за каждое дело и вставляй ссылки на доказательства, по одной на строку. В PDF ссылки видны и кликабельны, в PNG вместо них «Приложение №N». Свой пункт — кнопкой внизу списка. Пункты разбиты по официальной градации: основная отчётность, дополнительная отчётность, работа ГУ ВП.</div>
     <div id="acts"></div>
     <div class="vygovor-note ok" id="vygNote">Выговор, который ты уже выдал рапортом на взыскание, второй раз не считается. Оставь что-то одно: либо рапорт, либо выговор.</div>
 
     <h3>III. Итоговая информация</h3>
-    <label class="plab q">6. Общий результат работы за неделю<textarea id="result" rows="2"></textarea></label>
+    <label class="plab q">7. Общий результат работы за неделю<textarea id="result" rows="2"></textarea></label>
     <div class="norm-hint">Пусто — подставится автоматически: «выполнено мероприятий и служебных действий: N». Общее количество баллов печатается отдельной строкой перед датой.</div>
-    <label class="plab q">7. Дополнительные сведения<textarea id="extra" rows="2" placeholder="сложности, предложения; пусто — «отсутствуют»"></textarea></label>
+    <label class="plab q">8. Дополнительные сведения<textarea id="extra" rows="2" placeholder="сложности, предложения; пусто — «отсутствуют»"></textarea></label>
     <h3>Выгрузка</h3>
     <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
     <button class="btn primary" id="pdf">Скачать PDF</button>
@@ -87,8 +87,8 @@
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
 <script src="docs.js?v=3"></script>
-<script src="promo-rules.js"></script>
-<script src="criteria.js?v=3"></script>
-<script src="otchet.js?v=3"></script>
+<script src="promo-rules.js?v=4"></script>
+<script src="criteria.js?v=4"></script>
+<script src="otchet.js?v=4"></script>
 </body>
 </html>

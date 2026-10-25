@@ -78,7 +78,7 @@
     const n = D.parseName(v("fromName"));
     const att = { n: 0 };
     const showPts = $("showPts").checked;
-    const main = crit.docList("main", att, showPts), extra = crit.docList("extra", att, showPts);
+    const main = crit.docList("main", att, showPts), extra = crit.docList("extra", att, showPts), gu = crit.docList("gu", att, showPts);
     const listItem = (no, label, list, none) => list.length ? { item: no, label, list } : { item: no, label, value: none };
     const rank = v("fromRank") ? D.cap(v("fromRank")) : { ph: "звание" };
     const target = v("target");
@@ -99,11 +99,12 @@
           ["испрашиваемое звание — ", target ? target.toLowerCase() : { ph: "звание" }, "."]
         ], bullet: "dash" },
         { section: "II. РЕЗУЛЬТАТЫ СЛУЖЕБНОЙ ДЕЯТЕЛЬНОСТИ" },
-        listItem(4, "Основные критерии", main, "не выполнялись."),
-        listItem(5, "Дополнительные критерии", extra, "не выполнялись."),
+        listItem(4, "Основная отчётность", main, "не выполнялась."),
+        listItem(5, "Дополнительная отчётность", extra, "не выполнялась."),
+        listItem(6, "Работа ГУ ВП", gu, "не выполнялась."),
         { section: "III. ИТОГОВАЯ ИНФОРМАЦИЯ" },
-        v("result") ? { item: 6, label: "Общий результат работы за период", value: v("result") } : { item: 6, label: "Общий результат работы за период", list: [summaryLine()], bullet: "dash" },
-        { item: 7, label: "Дополнительные сведения", value: v("extra") || "отсутствуют." },
+        v("result") ? { item: 7, label: "Общий результат работы за период", value: v("result") } : { item: 7, label: "Общий результат работы за период", list: [summaryLine()], bullet: "dash" },
+        { item: 8, label: "Дополнительные сведения", value: v("extra") || "отсутствуют." },
         { space: 4 },
         { p: ["На основании изложенного ", { t: "ПРОШУ", b: true }, " рассмотреть настоящий рапорт, дать оценку результатам моей служебной деятельности и присвоить мне очередное воинское звание ", target ? `«${target.toLowerCase()}»` : { ph: "«звание»" }, "."] },
         { sign: {

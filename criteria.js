@@ -1,8 +1,13 @@
-// Панель критериев (основные / дополнительные) для еженедельного отчёта и рапорта на повышение.
+// Панель критериев для еженедельного отчёта и рапорта на повышение. Три группы (официальная градация):
+// «Основная отчётность», «Дополнительная отчётность», «Работа ГУ ВП» — window.PROMO.groups.
 // Список берётся из window.PROMO.acts (promo-rules.js); группа — поле group. Можно добавлять свои пункты.
 (() => {
   const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const GROUPS = { main: "Основные критерии", extra: "Дополнительные критерии" };
+  const GLIST = (window.PROMO && window.PROMO.groups) || [{ key: "main", name: "Основная отчётность" }, { key: "extra", name: "Дополнительная отчётность" }, { key: "gu", name: "Работа ГУ ВП" }];
+  const GROUPS = {}; GLIST.forEach(g => { GROUPS[g.key] = g.name; });
+  const GKEYS = GLIST.map(g => g.key);
+  const grpOf = g => GROUPS[g] ? g : "extra"; // неизвестная/старая группа → дополнительная
+  const SHORT = { main: "основная", extra: "дополнительная", gu: "ГУ ВП" };
   const linksOf = s => String(s || "").split(/\s+/).map(x => x.trim()).filter(x => window.VPDOC.isLink(x));
 
   window.VP_CRIT = function (opt) {
@@ -14,24 +19,24 @@
     const box = opt.box;
     const changed = () => { save(); paintCounts(); opt.onChange && opt.onChange(); };
 
-    function card(key, name, pts, custom) {
+    function card(key, name, pts, custom, hint) {
       const n = custom ? custom.n : (state.n[key] || 0), links = custom ? custom.links : (state.links[key] || "");
       return `<div class="act${n > 0 ? " done" : ""}" data-key="${esc(key)}"${custom ? ' data-custom="1"' : ""}>
         <div class="act-top">
-          ${custom ? `<input class="cust-name" data-cname placeholder="свой пункт: что сделано" value="${esc(custom.name)}">` : `<div class="act-name">${esc(name)}${pts ? `<span class="pts">+${pts}</span>` : ""}</div>`}
+          ${custom ? `<input class="cust-name" data-cname placeholder="свой пункт: что сделано" value="${esc(custom.name)}">` : `<div class="act-name"${hint ? ` title="${esc(hint)}"` : ""}>${esc(name)}${pts ? `<span class="pts">+${pts}</span>` : ""}</div>`}
           <div class="ctr"><button type="button" data-d="-1">−</button><input type="number" min="0" value="${n}" data-n><button type="button" data-d="1">+</button></div>
           ${custom ? `<button type="button" class="ev-x" data-cdel title="Убрать">×</button>` : ""}
         </div>
-        ${custom ? `<div class="cust-grp"><label><input type="radio" name="g_${esc(key)}" value="main"${custom.group === "main" ? " checked" : ""} data-cgrp> основной</label><label><input type="radio" name="g_${esc(key)}" value="extra"${custom.group !== "main" ? " checked" : ""} data-cgrp> дополнительный</label></div>` : ""}
+        ${custom ? `<div class="cust-grp">${GKEYS.map(g => `<label><input type="radio" name="g_${esc(key)}" value="${g}"${grpOf(custom.group) === g ? " checked" : ""} data-cgrp> ${esc(SHORT[g] || GROUPS[g])}</label>`).join("")}</div>` : ""}
         <details${links ? " open" : ""}><summary>ссылки (<span data-lc>${linksOf(links).length}</span>)</summary><textarea data-links rows="2" placeholder="по одной ссылке на строку">${esc(links)}</textarea></details>
       </div>`;
     }
     function draw() {
       let html = "";
-      ["main", "extra"].forEach(g => {
+      GKEYS.forEach(g => {
         html += `<h3>${GROUPS[g]}</h3>`;
-        acts.filter(a => (a.group || "extra") === g).forEach(a => { html += card(a.key, a.name, a.pts, null); });
-        state.custom.filter(c => (c.group === "main" ? "main" : "extra") === g).forEach(c => { html += card(c.id, "", 0, c); });
+        acts.filter(a => grpOf(a.group) === g).forEach(a => { html += card(a.key, a.name, a.pts, null, a.hint); });
+        state.custom.filter(c => grpOf(c.group) === g).forEach(c => { html += card(c.id, "", 0, c); });
       });
       html += `<button type="button" class="btn ghost" data-cadd>+ свой пункт</button>`;
       box.innerHTML = html;
@@ -77,8 +82,8 @@
     // Пункты для документа: {group, text, n, pts, links}
     function items() {
       const out = [];
-      acts.forEach(a => { const k = n(a.key); if (k > 0) out.push({ key: a.key, group: a.group || "extra", text: a.doc || a.name, n: k, pts: a.pts || 0, links: linksOf(state.links[a.key]) }); });
-      state.custom.forEach(c => { if (c.n > 0 && String(c.name || "").trim()) out.push({ key: c.id, group: c.group === "main" ? "main" : "extra", text: c.name.trim(), n: c.n, pts: 0, links: linksOf(c.links), custom: true }); });
+      acts.forEach(a => { const k = n(a.key); if (k > 0) out.push({ key: a.key, group: grpOf(a.group), text: a.doc || a.name, n: k, pts: a.pts || 0, links: linksOf(state.links[a.key]) }); });
+      state.custom.forEach(c => { if (c.n > 0 && String(c.name || "").trim()) out.push({ key: c.id, group: grpOf(c.group), text: c.name.trim(), n: c.n, pts: 0, links: linksOf(c.links), custom: true }); });
       return out;
     }
     function total() { return acts.reduce((s, a) => s + n(a.key) * (a.pts || 0), 0); }
@@ -96,6 +101,6 @@
     // всего выполнено мероприятий и служебных действий (сумма «штук» по всем отмеченным пунктам)
     function count() { return items().reduce((s, i) => s + i.n, 0); }
     draw();
-    return { items, total, count, n, reset, docList, redraw: draw, state: () => state };
+    return { items, total, count, n, reset, docList, groups: GLIST, redraw: draw, state: () => state };
   };
 })();
