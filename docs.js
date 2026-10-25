@@ -59,7 +59,7 @@
   }
 
   // ---------------- подпись + печать одной картинкой ----------------
-  // Логический холст 360×200 (2 px на pt): печать слева, роспись поверх, линия подписи.
+  // Логический холст 360×200 (2 px на pt): печать слева (центр 100,100), роспись по центру печати.
   async function signImage(opt) {
     await ready;
     const n = parseName(opt.name || "");
@@ -73,19 +73,36 @@
       g.drawImage(stamp, -d / 2, -d / 2, d, d); g.restore();
     }
     if (n) {
+      // Роспись рисуется на отдельном прозрачном холсте, затем по фактическим границам нарисованного
+      // (текст + росчерк) ставится так, чтобы её центр совпал с центром печати (100, 100).
+      const sc = document.createElement("canvas"); sc.width = W * K; sc.height = H * K;
+      const sg = sc.getContext("2d"); sg.scale(K, K);
       const r = rng(n.surname + n.initial), len = 3 + Math.floor(r() * 3);
       const text = (n.initial || "") + n.surname[0] + n.surname.slice(1, len).toLowerCase();
       const fs = 34 + Math.round(r() * 8);
-      const ox = 130, oy = 58; // левый верх блока росписи 240×100
-      g.save(); g.fillStyle = "#16205e"; g.strokeStyle = "#16205e";
-      g.font = `${fs}px "Marck Script"`;
-      const tw = Math.min(150, g.measureText(text).width);
-      g.save(); g.translate(ox + 12, oy + 4 + fs * 0.75);
-      g.rotate(-(4 + r() * 8) * Math.PI / 180); g.transform(1, 0, Math.tan(-(6 + r() * 10) * Math.PI / 180), 1, 0, 0);
-      g.fillText(text, 0, 0); g.restore();
+      const ox = 130, oy = 58; // левый верх блока росписи 240×100 (до центровки)
+      sg.save(); sg.fillStyle = "#16205e"; sg.strokeStyle = "#16205e";
+      sg.font = `${fs}px "Marck Script"`;
+      const tw = Math.min(150, sg.measureText(text).width);
+      sg.save(); sg.translate(ox + 12, oy + 4 + fs * 0.75);
+      sg.rotate(-(4 + r() * 8) * Math.PI / 180); sg.transform(1, 0, Math.tan(-(6 + r() * 10) * Math.PI / 180), 1, 0, 0);
+      sg.fillText(text, 0, 0); sg.restore();
       const ex = 14 + tw, ey = 38 + r() * 8;
       const d = `M ${ex} ${ey} C ${ex + 18} ${ey + 22}, ${ex - 40} ${ey + 34}, ${18 + r() * 10} ${70 + r() * 8} C 4 84, ${60 + r() * 20} ${78 + r() * 6}, ${120 + r() * 20} ${64 + r() * 6} S ${200 + r() * 15} ${44 + r() * 10}, ${226 + r() * 8} ${40 + r() * 8}`;
-      g.translate(ox, oy); g.lineWidth = 2.2; g.lineCap = "round"; g.stroke(new Path2D(d)); g.restore();
+      sg.translate(ox, oy); sg.lineWidth = 2.2; sg.lineCap = "round"; sg.stroke(new Path2D(d)); sg.restore();
+      // границы нарисованного (в пикселях холста)
+      const px = sg.getImageData(0, 0, sc.width, sc.height).data;
+      let x0 = sc.width, y0 = sc.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < sc.height; y++) for (let x = 0; x < sc.width; x++) if (px[(y * sc.width + x) * 4 + 3] > 24) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      if (x1 >= 0) {
+        const bw = (x1 - x0 + 1) / K, bh = (y1 - y0 + 1) / K;
+        const k = Math.min(1, 196 / bw, 120 / bh); // не шире ~печати (176) с небольшим выходом за круг
+        const cx = 100, cy = 100, dw = bw * k, dh = bh * k;
+        g.drawImage(sc, x0, y0, x1 - x0 + 1, y1 - y0 + 1, cx - dw / 2, cy - dh / 2, dw, dh);
+        signImage.last = { cx: cx, cy: cy, w: dw, h: dh, stampC: [100, 100], stampD: 176, canvas: [W, H] };
+      }
     }
     return cv.toDataURL("image/jpeg", 0.92); // белый фон: картинка стоит в своей колонке и не перекрывает текст
   }
