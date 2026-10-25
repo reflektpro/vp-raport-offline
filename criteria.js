@@ -18,6 +18,16 @@
     let state = {};
     try { state = JSON.parse(localStorage.getItem(opt.storeKey) || "{}"); } catch (e) {}
     state.n = state.n || {}; state.links = state.links || {}; state.custom = state.custom || []; state.vp = state.vp || {};
+    // перенос отметок убранных пунктов (PROMO.merged: старый → новый): счёт складывается, ссылки дописываются
+    const MERGED = (window.PROMO && window.PROMO.merged) || {};
+    let migrated = false;
+    Object.entries(MERGED).forEach(([from, to]) => {
+      const k = state.n[from] || 0, l = String(state.links[from] || "").trim();
+      if (k) state.n[to] = (state.n[to] || 0) + k;
+      if (l) state.links[to] = [String(state.links[to] || "").trim(), l].filter(Boolean).join("\n");
+      if (from in state.n || from in state.links || from in state.vp) { delete state.n[from]; delete state.links[from]; delete state.vp[from]; migrated = true; }
+    });
+    if (migrated) try { localStorage.setItem(opt.storeKey, JSON.stringify(state)); } catch (e) {}
     // weekly: true — баллы еженедельного отчёта (поле wk, только «Основная отчётность»); иначе — pts (повышение).
     const weekly = !!opt.weekly;
     const isVar = a => weekly && grpOf(a.group) === "main" && a.wk === "n";
@@ -100,11 +110,13 @@
     function total() { return acts.reduce((s, a) => s + sumOf(a), 0); }
     function reset() { state = { n: {}, links: {}, custom: [], vp: {} }; save(); draw(); opt.onChange && opt.onChange(); }
     // Строки пункта документа. att — общий счётчик приложений {n}.
-    // «Вид работы — штук: N (… баллов)», под ним каждая ссылка с новой строки: «а) адрес» (в PNG — «а) Приложение №N»).
+    // «Вид работы — штук: N (… баллов);», под ним каждая ссылка с новой строки: «а) адрес» (в PNG — «а) Приложение №N»).
+    // Каждое действие заканчивается «;» (и последнее в группе тоже); свой «.», «,» или «;» в конце названия убирается.
     function docList(group, att, showPts) {
       return items().filter(i => i.group === group).map(i => {
-        const r = [`${i.text} — штук: `, { t: String(i.n), b: true }];
+        const r = [`${String(i.text).replace(/[\s.,;]+$/, "")} — штук: `, { t: String(i.n), b: true }];
         if (showPts && i.sum) r.push(` (${i.sum} ${ballov(i.sum)})`);
+        r.push(";");
         const links = i.links.map(u => ({ url: u, alt: `Приложение №${++att.n}` }));
         return links.length ? { r, links } : r;
       });
