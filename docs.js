@@ -323,14 +323,21 @@
       (Array.isArray(s.pos) ? s.pos : s.pos ? [s.pos] : []).forEach(p => left.push({ text: R(p) }));
       const rightRuns = (s.right || [s.rank || "", s.name || ""]).map(x => R(x));
       const right = rightRuns.map(t => ({ text: t }));
-      // Печать с росписью стоит вплотную к колонке звания и И.О. Фамилии: ширина колонки = фактическая ширина
-      // самой длинной строки (+3 pt запаса), печать (88 pt в картинке 100 pt) — сразу левее, зазор ≈ 6 + 3 = 9 pt (12 px).
+      // Печать с росписью стоит у колонки звания и И.О. Фамилии: ширина колонки = фактическая ширина самой длинной
+      // строки (+3 pt запаса); между картинкой (100 pt, печать 88 pt по центру) и колонкой — ещё SHIFT ≈ 1,5 см.
+      // Итоговый зазор печать → текст ≈ 6 + 3 + SHIFT pt. Левая колонка — прежней ширины (CW − 332), чтобы её текст
+      // переносился как раньше; если справа длинное звание/ФИО и места не хватает, SHIFT уменьшается (минимум 6 pt
+      // свободного места слева от картинки), а при совсем длинной строке левая колонка сжимается.
       const rw = Math.min(230, Math.ceil(Math.max(40, ...rightRuns.map(t => textWidth(t, 12.5)))) + 3);
+      const LW = CW - 332, SHIFT = 42.5;
+      const free = CW - LW - rw - 100 - 6;
+      const shift = Math.max(0, Math.min(SHIFT, free));
       out.push({
         columns: [
-          { width: "*", stack: left, margin: [0, s.top || 40, 0, 0] },
-          { width: 8, text: "" },
+          free >= 0 ? { width: LW, stack: left, margin: [0, s.top || 40, 0, 0] } : { width: "*", stack: left, margin: [0, s.top || 40, 0, 0] },
+          free >= 0 ? { width: "*", text: "" } : { width: 6, text: "" },
           s.image ? { width: 100, image: s.image, fit: [100, 100] } : { width: 100, text: "" },
+          { width: shift, text: "" },
           { width: rw, stack: right, alignment: "right", margin: [0, s.top || 40, 0, 0] }
         ], columnGap: 0, margin: [0, s.date !== undefined ? 0 : 14, 0, 0], unbreakable: true
       });
