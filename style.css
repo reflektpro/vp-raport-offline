@@ -257,15 +257,32 @@ textarea.f{display:block;width:100%;resize:none;overflow:hidden;line-height:1.5;
 .export-row{display:flex;gap:8px}.export-row .btn{flex:1}
 @media (max-width:1240px){.layout.v2{flex-direction:column;align-items:center}.form-panel{position:static;width:100%;max-width:794px;flex:none;max-height:none}.preview-wrap{width:100%;max-width:794px;flex:none}}
 /* ===== единая экосистема ГУ ВП: верхняя полоса, отправка отчёта ===== */
-.eco-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:4px 28px;background:#0b0e0d;border-bottom:1px solid #2a322f;font:13px Oswald,"Segoe UI",sans-serif;letter-spacing:1px;text-transform:uppercase}
-.eco-bar b{color:var(--gold2);margin-right:10px;letter-spacing:2px}
-.eco-bar a{color:#e9e6dc;opacity:.75;text-decoration:none;padding:3px 10px;border-radius:3px}
-.eco-bar a:hover,.eco-bar a.on{opacity:1;color:var(--gold2);background:#1b2120}
-.eco-user{margin-left:auto;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:"Segoe UI",Roboto,Arial,sans-serif}
-.eco-user img{width:22px;height:22px;border-radius:50%}
-.eco-user button{background:transparent;border:1px solid #4a5550;color:#e9e6dc;border-radius:3px;padding:2px 8px;font-size:12px;cursor:pointer}
-.eco-user button:hover{border-color:var(--gold)}
-.eco-user .eco-in{background:#5865f2;border-color:#7983f5}
+.topbar>.eco-user{min-width:0;flex:none}
+.eco-user{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+.eco-user img{width:24px;height:24px;border-radius:50%}
+.eco-user span{max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.eco-user button,.eco-df button{background:transparent;border:1px solid #4a5550;color:#e9e6dc;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
+.eco-user button:hover,.eco-df button:hover{border-color:var(--gold)}
+.eco-user .eco-in,.eco-df .eco-in{background:#5865f2;border-color:#7983f5}
+body.eco-drawer .tabs{display:none}
+.eco-burger{width:42px;height:42px;flex:0 0 42px;display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;background:#1b2120;border:1px solid #4a5550;border-radius:6px;cursor:pointer;padding:0}
+.eco-burger:hover{border-color:var(--gold)}
+.eco-burger span{display:block;width:20px;height:2px;background:var(--gold2);border-radius:2px}
+.eco-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+body.eco-open .eco-ov{opacity:1;pointer-events:auto}
+.eco-drawer-p{position:fixed;top:0;left:0;bottom:0;width:300px;max-width:86vw;z-index:70;background:linear-gradient(#171d1b,#111514);border-right:2px solid var(--gold);transform:translateX(-102%);transition:transform .22s ease;display:flex;flex-direction:column;overflow-y:auto;color:#e9e6dc;box-shadow:8px 0 30px rgba(0,0,0,.5)}
+body.eco-open .eco-drawer-p{transform:none}
+.eco-dh{display:flex;align-items:center;gap:10px;padding:14px;border-bottom:1px solid #333d39}
+.eco-dh img{height:40px}.eco-dh>div{flex:1;min-width:0}.eco-dh b{font-family:Oswald,sans-serif;letter-spacing:2px;color:var(--gold2)}
+.eco-sm{font-size:12px;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eco-x{background:none;border:1px solid #4a5550;color:#e9e6dc;border-radius:5px;width:34px;height:34px;cursor:pointer}
+.eco-sec{padding:12px 16px 2px;font:12px Oswald,sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--gold2);opacity:.8}
+.eco-nav{display:flex;flex-direction:column;padding:2px 8px}
+.eco-nav a{display:flex;gap:12px;align-items:center;padding:8px 12px;border-radius:6px;color:#e9e6dc;text-decoration:none;border-left:3px solid transparent;font-family:Oswald,"Segoe UI",sans-serif;letter-spacing:1px;font-size:15px}
+.eco-nav a i{font-style:normal;width:24px;text-align:center}
+.eco-nav a:hover{background:#1f2725}.eco-nav a.on{background:#2a2614;border-left-color:var(--gold);color:var(--gold2)}
+.eco-df{margin-top:auto;padding:14px;border-top:1px solid #333d39}
+@media (max-width:700px){.topbar{padding:8px 12px;gap:10px}.topbar img{height:36px}.topbar>div:not(.eco-user){min-width:0;flex:1}.topbar .t1{font-size:13px;letter-spacing:1px;line-height:1.2;white-space:normal}.topbar .t2{font-size:11px}.eco-user span{display:none}.eco-user .eco-in{padding:4px 8px;white-space:normal;max-width:96px;line-height:1.2}}
 .form-panel select.bad{border-color:#e5675c;box-shadow:0 0 0 1px #e5675c}
 .week-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
 .send-box{border:1px solid #333d39;border-radius:6px;padding:10px 12px;background:#181d1c}
