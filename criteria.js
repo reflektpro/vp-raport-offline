@@ -17,7 +17,7 @@
     const acts = opt.acts;
     let state = {};
     try { state = JSON.parse(localStorage.getItem(opt.storeKey) || "{}"); } catch (e) {}
-    state.n = state.n || {}; state.links = state.links || {}; state.custom = state.custom || []; state.vp = state.vp || {};
+    state.n = state.n || {}; state.links = state.links || {}; state.custom = state.custom || []; state.vp = state.vp || {}; state.tp = state.tp || {};
     // перенос отметок убранных пунктов (PROMO.merged: старый → новый): счёт складывается, ссылки дописываются
     const MERGED = (window.PROMO && window.PROMO.merged) || {};
     let migrated = false;
@@ -46,6 +46,7 @@
           ${custom ? `<button type="button" class="ev-x" data-cdel title="Убрать">×</button>` : ""}
         </div>
         ${a && isVar(a) ? `<div class="act-vp"><label>баллы (сумма за все) <input type="number" min="0" data-vp value="${esc(state.vp[key] || "")}" placeholder="0"></label><span class="act-note">баллы зависят от мероприятия</span></div>` : ""}
+        ${a && a.perPoints ? `<div class="act-vp"><label>баллы от руководства <input type="number" min="0" data-tp value="${esc(state.tp[key] || "")}" placeholder="0"></label><span class="act-note">каждые ${a.perPoints} баллов = 1 благодарность</span></div>` : ""}
         ${a && weekly && a.wkNote ? `<div class="act-note">${esc(a.wkNote)}</div>` : ""}
         ${custom ? `<div class="cust-grp">${GKEYS.map(g => `<label><input type="radio" name="g_${esc(key)}" value="${g}"${grpOf(custom.group) === g ? " checked" : ""} data-cgrp> ${esc(SHORT[g] || GROUPS[g])}</label>`).join("")}</div>` : ""}
         <details${links ? " open" : ""}><summary>ссылки (<span data-lc>${linksOf(links).length}</span>)</summary><textarea data-links rows="2" placeholder="по одной ссылке на строку">${esc(links)}</textarea></details>
@@ -61,6 +62,8 @@
       html += `<button type="button" class="btn ghost" data-cadd>+ свой пункт</button>`;
       box.innerHTML = html;
     }
+    // количество благодарностей поменяли вручную — баллы больше не источник счёта
+    function dropTp(row) { if (state.tp[row.dataset.key] != null) { delete state.tp[row.dataset.key]; const i = row.querySelector("[data-tp]"); if (i) i.value = ""; } }
     function find(row) { return row.dataset.custom ? state.custom.find(c => c.id === row.dataset.key) : null; }
     function setN(row, n) {
       n = Math.max(0, n | 0); const c = find(row);
@@ -72,7 +75,7 @@
       const row = e.target.closest(".act");
       if (e.target.matches("[data-cadd]")) { state.custom.push({ id: "c" + Date.now().toString(36), name: "", group: "extra", n: 1, links: "" }); draw(); changed(); const ins = box.querySelectorAll("[data-cname]"); ins[ins.length - 1] && ins[ins.length - 1].focus(); return; }
       if (!row) return;
-      if (e.target.matches("[data-d]")) { setN(row, getN(row) + Number(e.target.dataset.d)); changed(); }
+      if (e.target.matches("[data-d]")) { setN(row, getN(row) + Number(e.target.dataset.d)); dropTp(row); changed(); }
       if (e.target.matches("[data-cdel]")) { state.custom = state.custom.filter(c => c.id !== row.dataset.key); draw(); changed(); }
     });
     box.addEventListener("change", e => {
@@ -82,9 +85,10 @@
     box.addEventListener("input", e => {
       const row = e.target.closest(".act"); if (!row) return;
       const c = find(row);
-      if (e.target.matches("[data-n]")) { const n = Math.max(0, parseInt(e.target.value) || 0); if (c) c.n = n; else state.n[row.dataset.key] = n; }
+      if (e.target.matches("[data-n]")) { const n = Math.max(0, parseInt(e.target.value) || 0); if (c) c.n = n; else state.n[row.dataset.key] = n; dropTp(row); }
       if (e.target.matches("[data-cname]")) c.name = e.target.value;
       if (e.target.matches("[data-vp]")) state.vp[row.dataset.key] = Math.max(0, parseInt(e.target.value) || 0);
+      if (e.target.matches("[data-tp]")) { const a = acts.find(x => x.key === row.dataset.key), p = Math.max(0, parseInt(e.target.value) || 0); state.tp[row.dataset.key] = p; if (a && a.perPoints) setN(row, Math.floor(p / a.perPoints)); }
       if (e.target.matches("[data-links]")) {
         if (c) c.links = e.target.value; else state.links[row.dataset.key] = e.target.value;
         const got = linksOf(e.target.value).length;
@@ -103,12 +107,12 @@
     // Пункты для документа: {group, text, n, pts, sum, links}; sum — баллы за пункт в текущем режиме
     function items() {
       const out = [];
-      acts.forEach(a => { const k = n(a.key); if (k > 0) out.push({ key: a.key, group: grpOf(a.group), text: a.doc || a.name, n: k, pts: unit(a), sum: sumOf(a), links: linksOf(state.links[a.key]) }); });
+      acts.forEach(a => { const k = n(a.key); if (k > 0) out.push({ key: a.key, group: grpOf(a.group), text: a.doc || a.name, n: k, pts: unit(a), sum: sumOf(a), links: linksOf(state.links[a.key]), vp: isVar(a) ? Math.max(0, parseInt(state.vp[a.key]) || 0) : undefined, points: a.perPoints && state.tp[a.key] ? state.tp[a.key] : undefined }); });
       state.custom.forEach(c => { if (c.n > 0 && String(c.name || "").trim()) out.push({ key: c.id, group: grpOf(c.group), text: c.name.trim(), n: c.n, pts: 0, sum: 0, links: linksOf(c.links), custom: true }); });
       return out;
     }
     function total() { return acts.reduce((s, a) => s + sumOf(a), 0); }
-    function reset() { state = { n: {}, links: {}, custom: [], vp: {} }; save(); draw(); opt.onChange && opt.onChange(); }
+    function reset() { state = { n: {}, links: {}, custom: [], vp: {}, tp: {} }; save(); draw(); opt.onChange && opt.onChange(); }
     // Строки пункта документа. att — общий счётчик приложений {n}.
     // «Вид работы — штук: N (… баллов);», под ним каждая ссылка с новой строки: «а) адрес» (в PNG — «а) Приложение №N»).
     // Каждое действие заканчивается «;», последнее в разделе — «.»; свой «.», «,» или «;» в конце названия убирается.

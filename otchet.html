@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body class="v2">
 <header class="topbar">
@@ -38,14 +38,16 @@
     <div class="q">2. Подразделение и должность</div>
     <div class="row2">
       <label class="plab">Подразделение<input class="req" id="fromUnit" list="units" placeholder="Батальон военной полиции"></label>
-      <label class="plab">Должность<input class="req" id="fromPos" list="positions" placeholder="Инспектор ВП"></label>
+      <label class="plab">Должность<select class="req" id="fromPos"><option value="">— выбрать —</option><option>Комендант Гарнизона</option><option>Ком. Бат. ВП</option><option>Зам. Ком. Бат. ВП</option><option>Инспектор Комендатуры</option><option>Инструктор ВП</option><option>Инспектор ВП</option><option>Стажёр ВП</option></select></label>
     </div>
     <div class="q">3. Отчётный период</div>
     <div class="week-dates"><input type="date" id="fromDate" class="req"><span>—</span><input type="date" id="toDate" class="req"></div>
+    <div class="week-btns"><button type="button" class="mini" id="wkCur">текущая неделя</button><button type="button" class="mini" id="wkPrev">прошлая неделя</button><span class="norm-hint" id="wkHint"></span></div>
 
     <h3>II. Результаты служебной деятельности</h3>
     <div class="bar"><div class="bar-fill" id="barFill"></div><span id="barText">0 баллов</span></div>
     <label class="chk"><input type="checkbox" id="showPts" checked> Указывать баллы в документе</label>
+    <div class="plan-box" id="planBox" hidden></div>
     <div class="acts-hint">Жми «+» за каждое дело и вставляй ссылки на доказательства, по одной на строку. В PDF ссылки видны и кликабельны, в PNG вместо них «Приложение №N». Свой пункт — кнопкой внизу списка. Пункты разбиты по официальной градации: основная отчётность, дополнительная отчётность, работа ГУ ВП. Баллы в отчёте дают только пункты основной отчётности; у «Организовать МП» и «Организовать ГМП» баллы зависят от мероприятия — впиши сумму в поле «баллы». Остальные пункты идут в отчёт и в число выполненных действий без баллов.</div>
     <div id="acts"></div>
     <div class="vygovor-note ok" id="vygNote">Выговор, который ты уже выдал рапортом на взыскание, второй раз не считается. Оставь что-то одно: либо рапорт, либо выговор.</div>
@@ -60,7 +62,13 @@
     <button class="btn" id="png">Скачать PNG</button>
     <button class="btn ghost" id="clear">Обнулить неделю</button>
     <div class="status" id="status"></div>
-    <div class="note">PDF — векторный текст, ссылки на доказательства видны и кликабельны. PNG — тот же документ без ссылок: вместо адресов «Приложение №N». Данные хранятся только в этом браузере и никуда не отправляются.</div>
+    <h3>Отправка руководству</h3>
+    <div class="send-box" id="sendBox">
+      <div class="send-info" id="sendInfo">Проверяю вход…</div>
+      <button class="btn primary" id="sendBtn" type="button">Отправить отчёт</button>
+      <div class="status" id="sendStatus"></div>
+    </div>
+    <div class="note">PDF — векторный текст, ссылки на доказательства видны и кликабельны. PNG — тот же документ без ссылок: вместо адресов «Приложение №N». PDF и PNG работают без входа. Данные хранятся в этом браузере; руководству они уходят только по кнопке «Отправить отчёт» (нужен вход через Discord). Срок — воскресенье 19:00 МСК, после срока отчёт сохраняется с отметкой «после срока», премия не начисляется.</div>
   </aside>
   <section class="preview-wrap">
     <div class="pv-bar"><span>Предпросмотр</span><span id="pvPages"></span>
@@ -75,20 +83,18 @@
   <option>Младший лейтенант</option><option>Лейтенант</option><option>Старший лейтенант</option><option>Капитан</option>
   <option>Майор</option><option>Подполковник</option><option>Полковник</option><option>Генерал-майор</option><option>Генерал-лейтенант</option><option>Генерал-полковник</option><option>Генерал армии</option>
 </datalist>
-<datalist id="positions">
-  <option>Стажёр ВП</option><option>Инспектор ВП</option><option>Дознаватель ВП</option><option>Инструктор ВП</option><option>Зам. Ком. Бат ВП</option><option>Ком. Бат ВП</option><option>Инспектор военной комендатуры</option><option>Дознаватель военной комендатуры</option><option>Заместитель коменданта гарнизона</option><option>Комендант гарнизона</option>
-</datalist>
 <datalist id="units"><option>Батальон военной полиции</option><option>Военная комендатура</option></datalist>
 
-<script src="config.js"></script>
+<script src="config.js?v=2"></script>
+<script src="eco.js?v=1"></script>
 <script src="vendor/fonts-data.js"></script>
 <script src="assets-data.js"></script>
 <script src="vendor/pdfmake.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
 <script src="docs.js?v=13"></script>
-<script src="promo-rules.js?v=7"></script>
-<script src="criteria.js?v=7"></script>
-<script src="otchet.js?v=5"></script>
+<script src="promo-rules.js?v=8"></script>
+<script src="criteria.js?v=8"></script>
+<script src="otchet.js?v=6"></script>
 </body>
 </html>

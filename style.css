@@ -256,3 +256,28 @@ textarea.f{display:block;width:100%;resize:none;overflow:hidden;line-height:1.5;
 .cust-grp{display:flex;gap:12px;font-size:12px;opacity:.8;margin-top:4px}
 .export-row{display:flex;gap:8px}.export-row .btn{flex:1}
 @media (max-width:1240px){.layout.v2{flex-direction:column;align-items:center}.form-panel{position:static;width:100%;max-width:794px;flex:none;max-height:none}.preview-wrap{width:100%;max-width:794px;flex:none}}
+/* ===== единая экосистема ГУ ВП: верхняя полоса, отправка отчёта ===== */
+.eco-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:4px 28px;background:#0b0e0d;border-bottom:1px solid #2a322f;font:13px Oswald,"Segoe UI",sans-serif;letter-spacing:1px;text-transform:uppercase}
+.eco-bar b{color:var(--gold2);margin-right:10px;letter-spacing:2px}
+.eco-bar a{color:#e9e6dc;opacity:.75;text-decoration:none;padding:3px 10px;border-radius:3px}
+.eco-bar a:hover,.eco-bar a.on{opacity:1;color:var(--gold2);background:#1b2120}
+.eco-user{margin-left:auto;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:"Segoe UI",Roboto,Arial,sans-serif}
+.eco-user img{width:22px;height:22px;border-radius:50%}
+.eco-user button{background:transparent;border:1px solid #4a5550;color:#e9e6dc;border-radius:3px;padding:2px 8px;font-size:12px;cursor:pointer}
+.eco-user button:hover{border-color:var(--gold)}
+.eco-user .eco-in{background:#5865f2;border-color:#7983f5}
+.form-panel select.bad{border-color:#e5675c;box-shadow:0 0 0 1px #e5675c}
+.week-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
+.send-box{border:1px solid #333d39;border-radius:6px;padding:10px 12px;background:#181d1c}
+.send-info{font-size:13px;line-height:1.5}
+.send-cur{margin-top:6px}
+.send-com{margin-top:6px;font-size:12.5px;padding:6px 8px;border-radius:4px;background:#232b2e}
+.send-com.err,.send-err{color:#ffb3ab}
+.tag{display:inline-block;padding:0 7px;border-radius:9px;font-size:11.5px;border:1px solid #4a5550;white-space:nowrap}
+.tag.ok{border-color:#3c7a45;color:#9fe0a8}.tag.warn{border-color:#7d6420;color:#f0d27a}.tag.err{border-color:#7a2a2a;color:#ff9c94}.tag.info{border-color:#2f5d7a;color:#9cd2f0}
+.plan-box{border:1px solid #333d39;border-radius:6px;padding:8px 10px;margin:4px 0 10px;background:#181d1c;font-size:12.5px}
+.plan-box table{width:100%;border-collapse:collapse;margin:4px 0}
+.plan-box td{padding:2px 4px;border-bottom:1px dashed #2c3532}
+.plan-box td.n{text-align:right;white-space:nowrap}
+.plan-box td.ok{color:#9fe0a8}.plan-box td.warn{color:#f0d27a}.plan-box td.err{color:#ff9c94}
+.plan-head{margin-bottom:4px}
