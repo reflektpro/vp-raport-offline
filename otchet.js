@@ -15,6 +15,28 @@
   D.persist("vp_week_pos", ["fromPos"]);
   // в тексте документа — обычным регистром («комендант гарнизона», «инспектор комендатуры»)
   const posText = () => v("fromPos").replace(/ Гарнизона$/, " гарнизона").replace(/ Комендатуры$/, " комендатуры");
+  // Адресат (блок «Кому»): по умолчанию — по должности и отметке «СС» (с сайта ГУ ВП после входа), можно выбрать вручную.
+  // Ключи совпадают с сервером (REPORT_TO в vp-exam worker): gu — прежний адресат, zam_kombrig_rls, kombrig.
+  const TO_TEXT = { gu: C.to || "Военному коменданту гарнизона, начальнику ГУ ВП", zam_kombrig_rls: "Заместителю командира бригады по РЛС", kombrig: "Командиру бригады" };
+  const TO_KEY = "vp_week_to";
+  let toSt = {}; try { toSt = JSON.parse(localStorage.getItem(TO_KEY) || "{}") || {}; } catch (e) {}
+  function autoTo() {
+    const p = v("fromPos"); if (p === "Ком. Бат. ВП" || p === "Комендант Гарнизона") return "kombrig";
+    const me = window.VP_ECO && window.VP_ECO.me; if (me && me.senior) return "zam_kombrig_rls";
+    return "gu";
+  }
+  function syncTo() {
+    const sel = $("toSel"); if (!sel) return;
+    sel.value = toSt.manual && TO_TEXT[toSt.to] ? toSt.to : autoTo();
+    const auto = autoTo(), name = k => (sel.querySelector(`option[value="${k}"]`) || {}).textContent || k;
+    $("toHint").innerHTML = toSt.manual && sel.value !== auto ? `Выбрано вручную. По должности — «${D.esc(name(auto))}». <button type="button" class="mini" id="toAuto">по должности</button>`
+      : "По умолчанию: командир батальона и комендант гарнизона — командиру бригады, старший состав (СС) — заместителю командира бригады по РЛС, остальные — начальнику ГУ ВП. Можно выбрать вручную.";
+    const b = $("toAuto"); if (b) b.onclick = () => { toSt = {}; try { localStorage.removeItem(TO_KEY); } catch (e) {} syncTo(); page.refresh(); };
+  }
+  const toText = () => TO_TEXT[$("toSel").value] || TO_TEXT.gu;
+  $("toSel").addEventListener("change", () => { toSt = { to: $("toSel").value, manual: true }; try { localStorage.setItem(TO_KEY, JSON.stringify(toSt)); } catch (e) {} syncTo(); });
+  $("fromPos").addEventListener("change", () => syncTo());
+  syncTo();
   const DRAFT = ["date", "fromDate", "toDate", "result", "extra", "stampOn", "showPts"];
   const draft = D.persist("vp_week_draft", DRAFT);
   const num = D.counter("week", $("num"));
@@ -58,7 +80,7 @@
     const rank = v("fromRank") ? D.cap(v("fromRank")) : { ph: "звание" };
     return {
       docTitle: `Еженедельный отчёт № ${v("num")}`, author: v("fromName"),
-      to: [[{ t: "Кому: ", b: true }, C.to || "Военному коменданту гарнизона, начальнику ГУ ВП"],
+      to: [[{ t: "Кому: ", b: true }, toText()],
            [{ t: "От: ", b: true }, rank, " ", n ? n.short : { ph: "Фамилия И.О." }, ", ", ph(D.lcFirst(posText()), "должность")]],
       title: "РАПОРТ", subtitle: "О результатах служебной деятельности за отчётную неделю",
       metaLine: ["№ ", ph(v("num"), "___")],
@@ -135,7 +157,7 @@
     h += late ? `<span class="tag err">срок прошёл</span>` : `<span class="tag ok">осталось ${dd ? dd + " д " : ""}${hh} ч ${mm} мин</span>`;
     if (r) {
       h += `<div class="send-cur">Отправленный отчёт: <span class="tag ${ST[r.status][1]}">${ST[r.status][0]}</span>${r.late ? ' <span class="tag err">после срока — без премии</span>' : ""} · версия ${r.version} от ${fmt(r.submitted_at)}
-        · ${r.position_name}${r.plan ? ` · <span class="tag ${LVL[r.plan.level][1]}">${LVL[r.plan.level][0]}</span>` : ""}</div>`;
+        · ${r.position_name}${r.addressee_name ? ` · кому: ${D.esc(r.addressee_name)}` : ""}${r.plan ? ` · <span class="tag ${LVL[r.plan.level][1]}">${LVL[r.plan.level][0]}</span>` : ""}</div>`;
       if (r.comment) h += `<div class="send-com"><b>Комментарий руководства:</b> ${D.esc(r.comment)}</div>`;
       const rej = r.items.filter(i => i.review && i.review.status === "rejected"), cut = r.items.filter(i => i.review && i.review.status === "ok" && i.review.n_ok != null);
       if (rej.length) h += `<div class="send-com err">Не засчитано: ${rej.map(i => D.esc(i.name) + (i.review.comment ? ` (${D.esc(i.review.comment)})` : "")).join("; ")}</div>`;
@@ -147,7 +169,7 @@
     sendState(h);
   }
   function payload() {
-    return { week: weekOfForm(), position: v("fromPos"),
+    return { week: weekOfForm(), position: v("fromPos"), addressee: $("toSel").value,
       header: { number: v("num"), date: v("date"), rank: v("fromRank"), name: v("fromName"), static_id: v("fromStatic"), unit: v("fromUnit"), from: v("fromDate"), to: v("toDate"), result: v("result"), extra: v("extra") },
       items: crit.items().map(i => ({ key: i.key, name: i.text, group: i.group, n: i.n, links: i.links, custom: !!i.custom, vp: i.vp, points: i.points })) };
   }
@@ -166,9 +188,10 @@
   });
   if (ECO && ECO.online) {
     fetch((window.VP_ECO_CONFIG || {}).API_BASE + "/api/report-config").then(r => r.ok ? r.json() : null).then(c => { premCfg = c; paintPlan(); }).catch(() => {});
-    ECO.ready.then(() => { loadMine(); if (ECO.justLoggedIn) sendStatus("Вы вошли через Discord — теперь можно отправить отчёт.", "ok"); });
+    ECO.ready.then(() => { syncTo(); page.refresh(); loadMine(); if (ECO.justLoggedIn) sendStatus("Вы вошли через Discord — теперь можно отправить отчёт.", "ok"); });
+    ECO.onChange.push(() => { syncTo(); page.refresh(); });
     ECO.onChange.push(loadMine);
   }
   paint();
-  window.__vp = { spec, crit, validate, payload, weekOfForm };
+  window.__vp = { spec, crit, validate, payload, weekOfForm, autoTo, syncTo };
 })();

@@ -28,6 +28,11 @@
       </label>
       <label class="plab">Дата подачи<input type="date" id="date"></label>
     </div>
+    <label class="plab">Кому (адресат отчёта)<select id="toSel">
+      <option value="gu">Военный комендант гарнизона, начальник ГУ ВП</option>
+      <option value="zam_kombrig_rls">Заместитель командира бригады по РЛС</option>
+      <option value="kombrig">Командир бригады</option></select></label>
+    <div class="norm-hint" id="toHint">По умолчанию: командир батальона и комендант гарнизона — командиру бригады, старший состав (СС) — заместителю командира бригады по РЛС, остальные — начальнику ГУ ВП. Можно выбрать вручную.</div>
     <h3>I. Общие сведения</h3>
     <div class="q">1. Военнослужащий</div>
     <div class="row2">
@@ -95,6 +100,6 @@
 <script src="docs.js?v=13"></script>
 <script src="promo-rules.js?v=8"></script>
 <script src="criteria.js?v=8"></script>
-<script src="otchet.js?v=6"></script>
+<script src="otchet.js?v=7"></script>
 </body>
 </html>
