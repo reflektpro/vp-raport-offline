@@ -6,6 +6,11 @@
   const ph = (x, p) => x ? x : { ph: p };
   const esc = D.esc;
   const swapOn = () => !window.VP_ECO || window.VP_ECO.missingPoints !== false;
+  const ECO = window.VP_ECO;
+  const courseHref = (id) => {
+    const base = ((window.VP_ECO_CONFIG || {}).EXAM_URL || "https://reflektpro.github.io/vp-exam/").replace(/\/?$/, "/");
+    return base + "#/course/" + id;
+  };
   const RANK_GEN = {"рядовой":"рядового","ефрейтор":"ефрейтора","младший сержант":"младшего сержанта","сержант":"сержанта","старший сержант":"старшего сержанта","старшина":"старшины","прапорщик":"прапорщика","старший прапорщик":"старшего прапорщика","младший лейтенант":"младшего лейтенанта","лейтенант":"лейтенанта","старший лейтенант":"старшего лейтенанта","капитан":"капитана","майор":"майора","подполковник":"подполковника","полковник":"полковника","генерал-майор":"генерал-майора"};
   D.persist("vp_me", ["fromRank", "fromStatic", "fromName", "fromPos", "fromUnit"]);
   const DRAFT = ["date", "fromDate", "toDate", "target", "result", "extra", "stampOn", "showPts"];
@@ -32,7 +37,11 @@
       const lack = res.items.reduce((s, i) => s + i.lack, 0);
       const canCover = swapOn() ? Math.floor(Math.max(0, total - step.points) / P.pointsPerItem) : 0;
       res.covered = Math.min(lack, canCover);
-      res.met = total >= step.points && lack <= canCover;
+      const g = ECO && ECO.gate ? ECO.gate() : null;
+      res.courses = (g && g.required) || [];
+      const cLeft = res.courses.filter(c => !c.done);
+      res.met = total >= step.points && lack <= canCover && !cLeft.length;
+      res.coursesLeft = cLeft;
       res.left = { pts: Math.max(0, step.points - total), swap: Math.max(0, lack - canCover) };
     }
     return res;
@@ -53,12 +62,14 @@
       $("barFill").style.width = pct + "%"; $("barFill").classList.toggle("full", r.total >= r.step.points);
       $("barText").textContent = `${r.total} / ${r.step.points} баллов`;
       $("crit").innerHTML = r.items.map(i => `<li class="${i.lack ? "no" : "ok"}">${i.lack ? "✗" : "✓"} ${esc(i.a.name.replace(/\s*\(.*\)$/, ""))} <b>${Math.min(i.have, i.need)}/${i.need}</b></li>`).join("")
+        + (r.courses || []).map(c => `<li class="${c.done ? "ok" : "no"}">${c.done ? "✓" : "✗"} <a href="${esc(courseHref(c.id))}" target="_blank" rel="noopener">Пройти курс «${esc(c.title)}»</a></li>`).join("")
         + `<li class="${r.total >= r.step.points ? "ok" : "no"}">${r.total >= r.step.points ? "✓" : "✗"} Набрать ${r.step.points} баллов <b>${r.total}</b></li>`;
       let note;
       if (r.met) note = r.covered ? `Готово к подаче. Недостающие пункты (${r.covered}) закрыты лишними баллами: ${P.pointsPerItem} баллов за пункт.` : "Все критерии выполнены, можно подавать.";
       else {
         const parts = [];
         if (r.left.pts) parts.push(`${r.left.pts} баллов`);
+        if (r.coursesLeft && r.coursesLeft.length) parts.push((r.coursesLeft.length > 1 ? "курсы " : "курс ") + r.coursesLeft.map(c => `«${c.title}»`).join(", "));
         if (r.left.swap) parts.push(swapOn() ? `${r.left.swap} пункт(ов) критерия, каждый можно заменить ${P.pointsPerItem} баллами сверх нормы` : `${r.left.swap} пункт(ов) критерия`);
         note = "Не хватает: " + parts.join("; ") + ".";
       }
@@ -66,7 +77,10 @@
     } else {
       $("route").textContent = v("fromRank") ? `Для звания «${v("fromRank")}» система повышений не описана. Баллы считаются, критерии не проверяются.` : "Укажи текущее звание.";
       $("barFill").style.width = "0"; $("barText").textContent = `${r.total} баллов`;
-      $("crit").innerHTML = ""; $("critNote").textContent = ""; $("critNote").className = "crit-note";
+      const g0 = ECO && ECO.gate ? ECO.gate() : null;
+      const courses = (g0 && g0.required) || [];
+      $("crit").innerHTML = courses.map(c => `<li class="${c.done ? "ok" : "no"}">${c.done ? "✓" : "✗"} <a href="${esc(courseHref(c.id))}" target="_blank" rel="noopener">Пройти курс «${esc(c.title)}»</a></li>`).join("");
+      $("critNote").textContent = ""; $("critNote").className = "crit-note";
     }
     $("result").placeholder = autoResult();
     return r;
@@ -115,13 +129,43 @@
       ]
     };
   }
+  let blocked = false;
   function validate() {
+    const g = ECO && ECO.gate ? ECO.gate() : { allowed: true };
+    if (!g.allowed) { blocked = true; return false; }
+    blocked = false;
     if (!D.check(["num", "date", "fromRank", "fromStatic", "fromName", "fromUnit", "fromPos", "target", "toDate"])) return false;
     const r = compute();
     if (r.step && !r.met && !confirm("Критерии повышения пока не выполнены. Всё равно выгрузить рапорт?")) return false;
     return true;
   }
-  const page = D.wire({ preview: $("preview"), spec, validate, counter: num, base: () => "povyshenie_" + (v("num") || "x") });
+  function gateHtml(g) {
+    if (!g || g.allowed) return "";
+    const list = (g.missing || []).map(c => `<a href="${esc(courseHref(c.id))}" target="_blank" rel="noopener">${esc(c.title)}</a>`).join(", ");
+    const after = g.missing && g.missing.length ? (g.missing.length > 1 ? "курсов" : "курса") + ": " + list : "обязательных курсов учёбы";
+    const login = g.needLogin ? ` <button type="button" class="eco-in" id="promoLogin">Войти через Discord</button>` : "";
+    return `<div class="alert warn small promo-gate">Скачать рапорт можно после ${after}.${login}</div>`;
+  }
+  function paintGate() {
+    const g = ECO && ECO.gate ? ECO.gate() : { allowed: true };
+    const el = $("promoGate"); if (el) el.innerHTML = gateHtml(g);
+    ["pdf", "png"].forEach(id => { const b = $(id); if (b) { b.classList.toggle("gated", !g.allowed); b.setAttribute("aria-disabled", g.allowed ? "false" : "true"); } });
+    const lb = $("promoLogin"); if (lb && ECO && ECO.login) lb.onclick = () => ECO.login();
+    recalc();
+  }
+  const page = D.wire({ preview: $("preview"), spec, validate, counter: num, base: () => "povyshenie_" + (v("num") || "x"),
+    get invalidText() { return blocked ? "Выгрузка откроется после обязательных курсов учёбы." : "Заполни подсвеченные красным поля."; } });
+  if (ECO) {
+    ECO.onPromo.push(paintGate);
+    const rankEl = $("fromRank");
+    let t = null, asked = "";
+    if (rankEl) rankEl.addEventListener("input", () => {
+      const r = rankEl.value.trim();
+      clearTimeout(t);
+      t = setTimeout(() => { if (r === asked) return; asked = r; if (ECO.checkEligibility) ECO.checkEligibility(r); }, 350);
+    });
+    ECO.ready.then(() => { asked = rankEl ? rankEl.value.trim() : ""; paintGate(); if (ECO.checkEligibility) return ECO.checkEligibility(asked); });
+  }
   $("form").addEventListener("input", () => page.refresh());
   $("form").addEventListener("change", () => page.refresh());
   $("clear").addEventListener("click", () => {

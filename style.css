@@ -378,3 +378,10 @@ input,select,textarea,.form-panel input,.form-panel textarea,.form-panel select,
 .status.ok{color:#b7f0c4}.status.err{color:#ffb3ab}.status.warn{color:#f0d27a}
 .note{border-top-color:var(--line);color:var(--mut)}
 @media (prefers-reduced-motion: reduce){.scene-photo{transition:none}}
+.btn.gated{opacity:.45;cursor:not-allowed}
+.promo-gate{margin-top:10px;font-size:13px;line-height:1.45}
+.promo-gate a{color:var(--gold2)}
+.promo-gate:empty{display:none}
+.promo-gate .eco-in{display:inline-flex;margin:0 0 0 8px;vertical-align:middle}
+.crit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.crit a:hover{color:var(--gold2)}

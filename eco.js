@@ -1,6 +1,6 @@
 // Единая экосистема ГУ ВП: шторка (боковое меню) с разделами учебного сайта и бланками + вход через Discord
 // (общий с учебным сайтом vp-exam: тот же API и та же сессия — оба сайта на reflektpro.github.io).
-// Бланки, PDF и PNG работают без входа; вход нужен только для отправки отчёта.
+// Бланки, PDF и PNG работают без входа. Вход нужен, чтобы отправить еженедельный отчёт и чтобы скачать рапорт на повышение, если для звания заданы обязательные курсы учёбы.
 // После входа Имя Фамилия, звание, статик (и должность) подставляются из профиля на сайте ГУ ВП.
 (() => {
   const E = window.VP_ECO_CONFIG || {};
@@ -24,19 +24,24 @@
     const ret = location.origin + location.pathname;
     location.href = E.API_BASE + "/auth/login?return=" + encodeURIComponent(ret);
   }
-  async function logout() { try { await api("POST", "/api/logout"); } catch (e) {} try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} ECO.me = null; paint(); ECO.onChange.forEach(f => f()); }
+  async function logout() { try { await api("POST", "/api/logout"); } catch (e) {} try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} ECO.me = null; paint(); ECO.onChange.forEach(f => f()); const rankEl = document.getElementById("fromRank"); checkEligibility(rankEl ? rankEl.value.trim() : ""); }
   const PROMO_CACHE = "vp_promo_config";
   const ECO = { me: null, api, login, logout, online, onChange: [], authError: null, missingPoints: true };
   function readPromoCache() {
     try { return JSON.parse(localStorage.getItem(PROMO_CACHE)); } catch (e) { return null; }
   }
   function writePromoCache(r) {
-    try { localStorage.setItem(PROMO_CACHE, JSON.stringify({ missing_points: r.missing_points !== false, custom: !!r.custom, config: r.config || null })); } catch (e) {}
+    try { localStorage.setItem(PROMO_CACHE, JSON.stringify({
+      missing_points: r.missing_points !== false, custom: !!r.custom, config: r.config || null,
+      courses_req: r.courses_req || { all: [], by_rank: {} }, course_titles: r.course_titles || {}
+    })); } catch (e) {}
   }
   // Настройка «недостающий пункт закрыть баллами» и изменённые ступени: с сервера, при отсутствии сети — из кэша браузера.
   function applyPromo(r) {
     if (!r) return;
     ECO.missingPoints = r.missing_points !== false;
+    ECO.coursesReq = r.courses_req || { all: [], by_rank: {} };
+    ECO.courseTitles = r.course_titles || {};
     const P = window.PROMO;
     if (P && r.custom && r.config) {
       const c = r.config;
@@ -47,7 +52,60 @@
     }
     const fr = document.getElementById("fromRank"); if (fr) fr.dispatchEvent(new Event("input", { bubbles: true }));
   }
+  const ELIG_CACHE = "vp_promo_elig";
+  function readEligAll() { try { return JSON.parse(localStorage.getItem(ELIG_CACHE)) || {}; } catch (e) { return {}; } }
+  function eligKey(uid, rank) { return String(uid || "") + "\t" + String(rank || "").trim().toLowerCase(); }
+  function readEligCache(uid, rank) {
+    const x = readEligAll()[eligKey(uid, rank)];
+    return x && typeof x === "object" ? x : null;
+  }
+  function writeEligCache(uid, rank, g) {
+    if (!uid) return;
+    try {
+      const all = readEligAll();
+      all[eligKey(uid, rank)] = { allowed: !!g.allowed, required: g.required || [], missing: g.missing || [], needLogin: false };
+      localStorage.setItem(ELIG_CACHE, JSON.stringify(all));
+    } catch (e) {}
+  }
+  function needCourses(rank) {
+    const req = ECO.coursesReq || { all: [], by_rank: {} };
+    const key = Object.keys(req.by_rank || {}).find(k => k.toLowerCase() === String(rank || "").trim().toLowerCase());
+    const ids = [...new Set([...(req.all || []), ...(key ? req.by_rank[key] : [])])];
+    const titles = ECO.courseTitles || {};
+    return ids.map(id => ({ id, title: titles[id] || titles[String(id)] || ("Курс " + id), done: false }));
+  }
+  ECO._gate = { allowed: true, required: [], missing: [], needLogin: false };
+  ECO.gate = () => ECO._gate;
+  ECO.onPromo = [];
+  function emitPromo() { ECO.onPromo.forEach(f => { try { f(ECO._gate); } catch (e) {} }); }
+  // Допуск к выгрузке рапорта на повышение: обязательные курсы для выбранного звания.
+  // Без сети — последний ответ сервера для этого человека и звания; если его нет, выгрузку не закрываем.
+  async function checkEligibility(rank) {
+    const need = needCourses(rank);
+    const uid = ECO.me && ECO.me.id;
+    const allow = (g) => { ECO._gate = g; emitPromo(); return g; };
+    if (!need.length) return allow({ allowed: true, required: [], missing: [], needLogin: false });
+    if (!online) {
+      const cached = uid && readEligCache(uid, rank);
+      return allow(cached || { allowed: true, required: need, missing: [], needLogin: false });
+    }
+    if (!token() || !ECO.me) return allow({ allowed: false, required: need, missing: need, needLogin: true });
+    try {
+      const r = await api("GET", "/api/promo/eligibility?rank=" + encodeURIComponent(rank || ""));
+      const g = { allowed: !!r.allowed, required: r.required || [], missing: r.missing || [], needLogin: false };
+      writeEligCache(uid, rank, g);
+      return allow(g);
+    } catch (e) {
+      if (e.status === 401) return allow({ allowed: false, required: need, missing: need, needLogin: true });
+      const cached = uid && readEligCache(uid, rank);
+      if (cached) return allow(cached);
+      if (e.network || e.status === 404 || e.status >= 500) return allow({ allowed: true, required: need, missing: [], needLogin: false });
+      return allow({ allowed: false, required: need, missing: need, needLogin: false });
+    }
+  }
+  ECO.checkEligibility = checkEligibility;
   applyPromo(readPromoCache());
+
 
   // Разделы учебного сайта: [путь, название, значок, нужная возможность]
   const SITE = [["/", "Главная", "🏠", ""], ["/study", "Учебный отдел", "🎓", "vp"], ["/reatt", "Переаттестация", "🔁", "reatt"], ["/reports", "Мои отчёты", "📝", "vp"],
@@ -138,6 +196,8 @@
     paint();
     autofill();
     await promoSync();
+    const rankEl = document.getElementById("fromRank");
+    await checkEligibility(rankEl ? rankEl.value.trim() : (ECO.me && ECO.me.rank) || "");
     return ECO;
   })();
   window.VP_ECO = ECO;

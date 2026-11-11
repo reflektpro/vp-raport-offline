@@ -8,7 +8,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <script>(function(){var ids=['kremlin','formation','tanks'],id=null;try{id=sessionStorage.getItem('vp_bg');}catch(e){}if(ids.indexOf(id)<0){id=ids[Math.min(ids.length-1,Math.floor(Math.random()*ids.length))];try{sessionStorage.setItem('vp_bg',id);}catch(e){}}var v=null;try{v=sessionStorage.getItem('vp_bg_v');}catch(e){}if(v!=='d'&&v!=='m'){v=window.matchMedia('(max-width: 720px)').matches?'m':'d';try{sessionStorage.setItem('vp_bg_v',v);}catch(e){}}var h=document.documentElement;h.dataset.bg=id;h.dataset.bgVariant=v;})();</script>
 </head>
 <body class="v2">
@@ -67,6 +67,7 @@
     <label class="chk"><input type="checkbox" id="stampOn" checked> Ставить печать</label>
     <button class="btn primary" id="pdf">Скачать PDF</button>
     <button class="btn" id="png">Скачать PNG</button>
+    <div id="promoGate"></div>
     <button class="btn ghost" id="clear">Обнулить достижения</button>
     <div class="status" id="status"></div>
     <div class="note">PDF — векторный текст, ссылки на доказательства видны и кликабельны. PNG — тот же документ без ссылок: вместо адресов «Приложение №N». Данные хранятся только в этом браузере и никуда не отправляются.</div>
@@ -90,15 +91,15 @@
 <datalist id="units"><option>Батальон военной полиции</option><option>Военная комендатура</option></datalist>
 
 <script src="config.js?v=2"></script>
-<script src="eco.js?v=3"></script>
+<script src="eco.js?v=4"></script>
 <script src="vendor/fonts-data.js"></script>
 <script src="assets-data.js"></script>
 <script src="vendor/pdfmake.min.js"></script>
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf.worker.min.js"></script>
 <script src="docs.js?v=13"></script>
-<script src="promo-rules.js?v=8"></script>
+<script src="promo-rules.js?v=9"></script>
 <script src="criteria.js?v=8"></script>
-<script src="povyshenie.js?v=5"></script>
+<script src="povyshenie.js?v=6"></script>
 </body>
 </html>
