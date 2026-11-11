@@ -5,6 +5,7 @@
   const v = id => $(id).value.trim();
   const ph = (x, p) => x ? x : { ph: p };
   const esc = D.esc;
+  const swapOn = () => !window.VP_ECO || window.VP_ECO.missingPoints !== false;
   const RANK_GEN = {"рядовой":"рядового","ефрейтор":"ефрейтора","младший сержант":"младшего сержанта","сержант":"сержанта","старший сержант":"старшего сержанта","старшина":"старшины","прапорщик":"прапорщика","старший прапорщик":"старшего прапорщика","младший лейтенант":"младшего лейтенанта","лейтенант":"лейтенанта","старший лейтенант":"старшего лейтенанта","капитан":"капитана","майор":"майора","подполковник":"подполковника","полковник":"полковника","генерал-майор":"генерал-майора"};
   D.persist("vp_me", ["fromRank", "fromStatic", "fromName", "fromPos", "fromUnit"]);
   const DRAFT = ["date", "fromDate", "toDate", "target", "result", "extra", "stampOn", "showPts"];
@@ -29,7 +30,7 @@
         res.items.push({ a, need, have, lack: Math.max(0, need - have) });
       });
       const lack = res.items.reduce((s, i) => s + i.lack, 0);
-      const canCover = Math.floor(Math.max(0, total - step.points) / P.pointsPerItem);
+      const canCover = swapOn() ? Math.floor(Math.max(0, total - step.points) / P.pointsPerItem) : 0;
       res.covered = Math.min(lack, canCover);
       res.met = total >= step.points && lack <= canCover;
       res.left = { pts: Math.max(0, step.points - total), swap: Math.max(0, lack - canCover) };
@@ -58,7 +59,7 @@
       else {
         const parts = [];
         if (r.left.pts) parts.push(`${r.left.pts} баллов`);
-        if (r.left.swap) parts.push(`${r.left.swap} пункт(ов) критерия, каждый можно заменить ${P.pointsPerItem} баллами сверх нормы`);
+        if (r.left.swap) parts.push(swapOn() ? `${r.left.swap} пункт(ов) критерия, каждый можно заменить ${P.pointsPerItem} баллами сверх нормы` : `${r.left.swap} пункт(ов) критерия`);
         note = "Не хватает: " + parts.join("; ") + ".";
       }
       $("critNote").textContent = note; $("critNote").className = "crit-note " + (r.met ? "ok" : "no");

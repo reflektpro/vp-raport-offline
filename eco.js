@@ -25,7 +25,29 @@
     location.href = E.API_BASE + "/auth/login?return=" + encodeURIComponent(ret);
   }
   async function logout() { try { await api("POST", "/api/logout"); } catch (e) {} try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} ECO.me = null; paint(); ECO.onChange.forEach(f => f()); }
-  const ECO = { me: null, api, login, logout, online, onChange: [], authError: null };
+  const PROMO_CACHE = "vp_promo_config";
+  const ECO = { me: null, api, login, logout, online, onChange: [], authError: null, missingPoints: true };
+  function readPromoCache() {
+    try { return JSON.parse(localStorage.getItem(PROMO_CACHE)); } catch (e) { return null; }
+  }
+  function writePromoCache(r) {
+    try { localStorage.setItem(PROMO_CACHE, JSON.stringify({ missing_points: r.missing_points !== false, custom: !!r.custom, config: r.config || null })); } catch (e) {}
+  }
+  // Настройка «недостающий пункт закрыть баллами» и изменённые ступени: с сервера, при отсутствии сети — из кэша браузера.
+  function applyPromo(r) {
+    if (!r) return;
+    ECO.missingPoints = r.missing_points !== false;
+    const P = window.PROMO;
+    if (P && r.custom && r.config) {
+      const c = r.config;
+      if (c.points_per_item) P.pointsPerItem = c.points_per_item;
+      if (c.pts) P.acts.forEach(a => { if (Object.prototype.hasOwnProperty.call(c.pts, a.key)) a.pts = c.pts[a.key]; });
+      if (Array.isArray(c.ladder)) { Object.keys(P.ladder).forEach(k => delete P.ladder[k]); c.ladder.forEach(s => { P.ladder[s.rank] = { to: s.to, points: s.points, need: s.need || {} }; }); }
+      ECO.promoCustom = true;
+    }
+    const fr = document.getElementById("fromRank"); if (fr) fr.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  applyPromo(readPromoCache());
 
   // Разделы учебного сайта: [путь, название, значок, нужная возможность]
   const SITE = [["/", "Главная", "🏠", ""], ["/study", "Учебный отдел", "🎓", "vp"], ["/reatt", "Переаттестация", "🔁", "reatt"], ["/reports", "Мои отчёты", "📝", "vp"],
@@ -96,17 +118,12 @@
     if (me.position) n += setField("fromPos", me.position);
     ECO.autofilled = n;
   }
-  // Система повышения: если администраторы изменили требования на сайте ГУ ВП — применить их к рапорту на повышение.
   async function promoSync() {
-    const P = window.PROMO; if (!P || !online) return;
+    if (!online) return;
     let r; try { r = await api("GET", "/api/promo-config"); } catch (e) { return; }
-    if (!r || !r.custom || !r.config) return;
-    const c = r.config;
-    if (c.points_per_item) P.pointsPerItem = c.points_per_item;
-    if (c.pts) P.acts.forEach(a => { if (Object.prototype.hasOwnProperty.call(c.pts, a.key)) a.pts = c.pts[a.key]; });
-    if (Array.isArray(c.ladder)) { Object.keys(P.ladder).forEach(k => delete P.ladder[k]); c.ladder.forEach(s => { P.ladder[s.rank] = { to: s.to, points: s.points, need: s.need || {} }; }); }
-    ECO.promoCustom = true;
-    const fr = document.getElementById("fromRank"); if (fr) fr.dispatchEvent(new Event("input", { bubbles: true }));
+    if (!r) return;
+    writePromoCache(r);
+    applyPromo(r);
   }
   ECO.ready = (async () => {
     const qs = new URLSearchParams(location.search);
