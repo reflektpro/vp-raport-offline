@@ -32,24 +32,29 @@
   }
   function writePromoCache(r) {
     try { localStorage.setItem(PROMO_CACHE, JSON.stringify({
-      missing_points: r.missing_points !== false, custom: !!r.custom, config: r.config || null,
+      missing_points: r.missing_points !== false, custom: !!r.custom, config: r.config || null, items: Array.isArray(r.items) ? r.items : null,
       courses_req: r.courses_req || { all: [], by_rank: {} }, course_titles: r.course_titles || {}
     })); } catch (e) {}
   }
-  // Настройка «недостающий пункт закрыть баллами» и изменённые ступени: с сервера, при отсутствии сети — из кэша браузера.
+  // Система повышения с сайта ГУ ВП (баллы за пункты, ступени, пункты, «баллы за недостающий пункт», обязательные курсы):
+  // с сервера, без сети — из копии в браузере. В правила (window.PROMO) переносит VP_PROMO_CALC.applyConfig (promo-calc.js);
+  // eco.js грузится раньше promo-rules.js, поэтому страница вызывает ECO.applyRules() ещё раз, когда правила загружены.
+  ECO.onRules = [];
+  ECO.promoCfg = null;
+  ECO.applyRules = function () {
+    const P = window.PROMO, C = window.VP_PROMO_CALC, r = ECO.promoCfg;
+    if (!P || !C || !r || !C.applyConfig(P, r)) return false;
+    ECO.promoCustom = !!r.custom;
+    ECO.onRules.forEach(f => { try { f(); } catch (e) {} });
+    return true;
+  };
   function applyPromo(r) {
     if (!r) return;
     ECO.missingPoints = r.missing_points !== false;
     ECO.coursesReq = r.courses_req || { all: [], by_rank: {} };
     ECO.courseTitles = r.course_titles || {};
-    const P = window.PROMO;
-    if (P && r.custom && r.config) {
-      const c = r.config;
-      if (c.points_per_item) P.pointsPerItem = c.points_per_item;
-      if (c.pts) P.acts.forEach(a => { if (Object.prototype.hasOwnProperty.call(c.pts, a.key)) a.pts = c.pts[a.key]; });
-      if (Array.isArray(c.ladder)) { Object.keys(P.ladder).forEach(k => delete P.ladder[k]); c.ladder.forEach(s => { P.ladder[s.rank] = { to: s.to, points: s.points, need: s.need || {} }; }); }
-      ECO.promoCustom = true;
-    }
+    ECO.promoCfg = r;
+    ECO.applyRules();
     const fr = document.getElementById("fromRank"); if (fr) fr.dispatchEvent(new Event("input", { bubbles: true }));
   }
   const ELIG_CACHE = "vp_promo_elig";

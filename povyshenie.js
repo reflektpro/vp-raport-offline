@@ -5,8 +5,10 @@
   const v = id => $(id).value.trim();
   const ph = (x, p) => x ? x : { ph: p };
   const esc = D.esc;
-  const swapOn = () => !window.VP_ECO || window.VP_ECO.missingPoints !== false;
+  const PC = window.VP_PROMO_CALC;
   const ECO = window.VP_ECO;
+  if (ECO && ECO.applyRules) ECO.applyRules(); // правила с сайта ГУ ВП (или их копия без сети) — до первой отрисовки пунктов
+  const swapOn = () => P.missingPoints !== false;
   const courseHref = (id) => {
     const base = ((window.VP_ECO_CONFIG || {}).EXAM_URL || "https://reflektpro.github.io/vp-exam/").replace(/\/?$/, "/");
     return base + "#/course/" + id;
@@ -21,30 +23,15 @@
   if (!$("date").value) $("date").value = D.iso(now);
   if (!$("toDate").value) $("toDate").value = D.iso(now);
 
-  const acts = P.acts.filter(a => !a.week);
+  // все пункты системы повышения (и те, что в еженедельном отчёте помечены week, например выговоры — они нужны ступеням);
+  // тот же массив, что в правилах: пункты, добавленные на сайте ГУ ВП, появляются сразу
+  const acts = P.acts;
   const crit = window.VP_CRIT({ box: $("acts"), acts, storeKey: "vp_promo_crit", onChange: () => { recalc(); page.refresh(); } });
-  const findRank = r => Object.keys(P.ladder).find(k => k.toLowerCase() === String(r || "").trim().toLowerCase());
-
+  const counts = () => { const o = {}; acts.forEach(a => { const k = crit.n(a.key); if (k) o[a.key] = k; }); return o; };
+  // расчёт — общий с сайтом ГУ ВП и сервером (promo-calc.js)
   function compute() {
-    const rank = findRank(v("fromRank")), step = rank ? P.ladder[rank] : null;
-    const total = crit.total();
-    const res = { rank, step, total, items: [], met: false, covered: 0 };
-    if (step) {
-      Object.entries(step.need).forEach(([k, need]) => {
-        const a = P.acts.find(x => x.key === k), have = crit.n(k);
-        res.items.push({ a, need, have, lack: Math.max(0, need - have) });
-      });
-      const lack = res.items.reduce((s, i) => s + i.lack, 0);
-      const canCover = swapOn() ? Math.floor(Math.max(0, total - step.points) / P.pointsPerItem) : 0;
-      res.covered = Math.min(lack, canCover);
-      const g = ECO && ECO.gate ? ECO.gate() : null;
-      res.courses = (g && g.required) || [];
-      const cLeft = res.courses.filter(c => !c.done);
-      res.met = total >= step.points && lack <= canCover && !cLeft.length;
-      res.coursesLeft = cLeft;
-      res.left = { pts: Math.max(0, step.points - total), swap: Math.max(0, lack - canCover) };
-    }
-    return res;
+    const g = ECO && ECO.gate ? ECO.gate() : null;
+    return PC.calc(P, v("fromRank"), counts(), { missingPoints: swapOn(), courses: (g && g.required) || [] });
   }
   function autoResult() {
     return `выполнено мероприятий и служебных действий: ${crit.count()}.`;
@@ -157,6 +144,7 @@
     get invalidText() { return blocked ? "Выгрузка откроется после обязательных курсов учёбы." : "Заполни подсвеченные красным поля."; } });
   if (ECO) {
     ECO.onPromo.push(paintGate);
+    ECO.onRules.push(() => { crit.redraw(); recalc(); page.refresh(); });
     const rankEl = $("fromRank");
     let t = null, asked = "";
     if (rankEl) rankEl.addEventListener("input", () => {
